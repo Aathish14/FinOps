@@ -111,121 +111,121 @@ if uploaded_files:
     # Run analysis
     if st.button("Run Analysis", type="primary"):
         with st.spinner("Running forecasting and anomaly detection..."):
-            # We'll analyze each service/account group separately
-            # For simplicity, we'll aggregate by date and service
-            # In a real system, we might want to do per service/account
-            
-            # Prepare data for visualization
-            # Historical spending chart
-            historical_fig = plot_historical_spending(df, "Historical Cloud Spend")
-            st.plotly_chart(historical_fig, use_container_width=True)
-            
-            # For forecasting, we'll use the total daily spend
-            daily_df = df.groupby('date')['cost_usd'].sum().reset_index()
-            daily_df = daily_df.rename(columns={'date': 'ds', 'cost_usd': 'y'})
-            
-            # Split data for forecasting (use last 30% as test, but we'll forecast forward)
-            # We'll use all data to train, then forecast forward
-            train_size = int(len(daily_df) * 0.8)
-            train_data = daily_df[:train_size]
-            # We don't have test data for future dates, so we'll just train on all data for forecasting
-            # But for evaluation we could hold out some recent points
-            
-            # Create and fit forecasting model
-            forecast_model = create_forecasting_model('prophet')
-            forecast_model.fit(train_data)
-            
-            # Generate forecast
-            forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
-            # Rename columns for consistency with our visualization function
-            forecast_df = forecast_df.rename(columns={
-                'ds': 'date',
-                'yhat': 'forecast_cost_usd',
-                'yhat_lower': 'lower_bound_80',
-                'yhat_upper': 'upper_bound_80'
-            })
-            
-            # Calculate residuals for anomaly detection (on training data)
-            # We need to get predictions on the training data to compute residuals
-            train_pred = forecast_model.predict(periods=0, freq='D')  # This doesn't work as expected
-            # Instead, let's get in-sample predictions
-            # We'll create a future dataframe that includes the training dates
-            train_future = forecast_model.model.make_future_dataframe(periods=0)
-            train_forecast = forecast_model.model.predict(train_future)
-            # Merge with actuals
-            train_with_pred = train_data.copy()
-            train_with_pred['predicted'] = train_forecast['yhat'].values
-            train_with_pred['residual'] = train_with_pred['y'] - train_with_pred['predicted']
-            
-            # Prepare features for anomaly detection
-            # We'll use: residual, residual_lag1, residual_rolling_mean_7, etc.
-            # For simplicity, we'll use just the residual and some basic features
-            anomaly_features = train_with_pred[['residual']].copy()
-            anomaly_features['residual_lag1'] = anomaly_features['residual'].shift(1)
-            anomaly_features['residual_rolling_mean_7'] = anomaly_features['residual'].rolling(7, min_periods=1).mean()
-            anomaly_features['residual_rolling_std_7'] = anomaly_features['residual'].rolling(7, min_periods=1).std()
-            # Fill NaN values
-            anomaly_features = anomaly_features.fillna(method='bfill').fillna(method='ffill')
-            
-            # Fit anomaly detector
-            anomaly_detector = create_anomaly_detector(contamination=0.05)  # Expect 5% anomalies
-            anomaly_detector.fit(anomaly_features)
-            
-            # Get anomaly scores and predictions
-            anomaly_scores = anomaly_detector.score_samples(anomaly_features)
-            anomaly_predictions = anomaly_detector.predict(anomaly_features)
-            # Convert to binary: 1 for anomaly, 0 for normal
-            anomaly_labels = (anomaly_predictions == -1).astype(int)
-            
-            # Add to dataframe
-            train_with_pred['anomaly_score'] = anomaly_scores
-            train_with_pred['is_anomaly'] = anomaly_labels
-            
-            # For future dates (forecast period), we don't have actuals, so we can't compute residuals
-            # We'll just show the forecast without anomaly detection for future dates
-            
-            # Create forecast visualization
-            forecast_fig = plot_forecast_with_intervals(
-                historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
-                forecast_df=forecast_df,
-                title="Cloud Spend Forecast with Confidence Intervals"
-            )
-            st.plotly_chart(forecast_fig, use_container_width=True)
-            
-            # Show anomalies in historical data
-            anomalies_df = train_with_pred[train_with_pred['is_anomaly'] == 1]
-            if not anomalies_df.empty:
-                anomaly_fig = plot_anomalies(
-                    df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
-                    anomaly_df=anomalies_df[['date', 'cost_usd']],
-                    title="Historical Spend with Detected Anomalies"
+            try:
+                # We'll analyze each service/account group separately
+                # For simplicity, we'll aggregate by date and service
+                # In a real system, we might want to do per service/account
+                
+                # Prepare data for visualization
+                # Historical spending chart
+                historical_fig = plot_historical_spending(df, "Historical Cloud Spend")
+                st.plotly_chart(historical_fig, use_container_width=True)
+                
+                # For forecasting, we'll use the total daily spend
+                daily_df = df.groupby('date')['cost_usd'].sum().reset_index()
+                daily_df = daily_df.rename(columns={'date': 'ds', 'cost_usd': 'y'})
+                
+                # Split data for forecasting (use last 30% as test, but we'll forecast forward)
+                # We'll use all data to train, then forecast forward
+                train_size = int(len(daily_df) * 0.8)
+                train_data = daily_df[:train_size]
+                # We don't have test data for future dates, so we'll just train on all data for forecasting
+                # But for evaluation we could hold out some recent points
+                
+                # Create and fit forecasting model
+                forecast_model = create_forecasting_model('prophet')
+                forecast_model.fit(train_data)
+                
+                # Generate forecast
+                forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
+                # Rename columns for consistency with our visualization function
+                forecast_df = forecast_df.rename(columns={
+                    'ds': 'date',
+                    'yhat': 'forecast_cost_usd',
+                    'yhat_lower': 'lower_bound_80',
+                    'yhat_upper': 'upper_bound_80'
+                })
+                
+                # Calculate residuals for anomaly detection (on training data)
+                # We need to get predictions on the training data to compute residuals
+                train_pred = forecast_model.predict(periods=0, freq='D')  # This doesn't work as expected
+                # Instead, let's get in-sample predictions
+                # We'll create a future dataframe that includes the training dates
+                train_future = forecast_model.model.make_future_dataframe(periods=0)
+                train_forecast = forecast_model.model.predict(train_future)
+                # Merge with actuals
+                train_with_pred = train_data.copy()
+                train_with_pred['predicted'] = train_forecast['yhat'].values
+                train_with_pred['residual'] = train_with_pred['y'] - train_with_pred['predicted']
+                
+                # Prepare features for anomaly detection
+                # We'll use: residual, residual_lag1, residual_rolling_mean_7, etc.
+                # For simplicity, we'll use just the residual and some basic features
+                anomaly_features = train_with_pred[['residual']].copy()
+                anomaly_features['residual_lag1'] = anomaly_features['residual'].shift(1)
+                anomaly_features['residual_rolling_mean_7'] = anomaly_features['residual'].rolling(7, min_periods=1).mean()
+                anomaly_features['residual_rolling_std_7'] = anomaly_features['residual'].rolling(7, min_periods=1).std()
+                # Fill NaN values
+                anomaly_features = anomaly_features.fillna(method='bfill').fillna(method='ffill')
+                
+                # Fit anomaly detector
+                anomaly_detector = create_anomaly_detector(contamination=0.05)  # Expect 5% anomalies
+                anomaly_detector.fit(anomaly_features)
+                
+                # Get anomaly scores and predictions
+                anomaly_scores = anomaly_detector.score_samples(anomaly_features)
+                anomaly_predictions = anomaly_detector.predict(anomaly_features)
+                # Convert to binary: 1 for anomaly, 0 for normal
+                anomaly_labels = (anomaly_predictions == -1).astype(int)
+                
+                # Add to dataframe
+                train_with_pred['anomaly_score'] = anomaly_scores
+                train_with_pred['is_anomaly'] = anomaly_labels
+                
+                # For future dates (forecast period), we don't have actuals, so we can't compute residuals
+                # We'll just show the forecast without anomaly detection for future dates
+                
+                # Create forecast visualization
+                forecast_fig = plot_forecast_with_intervals(
+                    historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
+                    forecast_df=forecast_df,
+                    title="Cloud Spend Forecast with Confidence Intervals"
                 )
-                st.plotly_chart(anomaly_fig, use_container_width=True)
+                st.plotly_chart(forecast_fig, use_container_width=True)
                 
-                st.subheader("Detected Anomalies")
-                st.dataframe(anomalies_df[['date', 'cost_usd', 'anomaly_score']])
-            else:
-                st.info("No anomalies detected in the historical data.")
-            
-            # Show forecast table
-            st.subheader("Forecast Values")
-            forecast_display = forecast_df[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']].copy()
-            forecast_display['date'] = forecast_display['date'].dt.date
-            st.dataframe(forecast_display)
-            
-            # Additional visualizations
-            st.subheader("Additional Insights")
-            col1, col2 = st.columns(2)
-            with col1:
-                service_fig = create_spending_by_service_chart(df, "Spending by Service")
-                st.plotly_chart(service_fig, use_container_width=True)
-            with col2:
-                monthly_fig = create_monthly_trend_chart(df, "Monthly Spend Trend")
-                st.plotly_chart(monthly_fig, use_container_width=True)
+                # Show anomalies in historical data
+                anomalies_df = train_with_pred[train_with_pred['is_anomaly'] == 1]
+                if not anomalies_df.empty:
+                    anomaly_fig = plot_anomalies(
+                        df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
+                        anomaly_df=anomalies_df[['date', 'cost_usd']],
+                        title="Historical Spend with Detected Anomalies"
+                    )
+                    st.plotly_chart(anomaly_fig, use_container_width=True)
+                    
+                    st.subheader("Detected Anomalies")
+                    st.dataframe(anomalies_df[['date', 'cost_usd', 'anomaly_score']])
+                else:
+                    st.info("No anomalies detected in the historical data.")
                 
-        except Exception as e:
-            st.error(f"Error during analysis: {str(e)}")
-            st.exception(e)
+                # Show forecast table
+                st.subheader("Forecast Values")
+                forecast_display = forecast_df[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']].copy()
+                forecast_display['date'] = forecast_display['date'].dt.date
+                st.dataframe(forecast_display)
+                
+                # Additional visualizations
+                st.subheader("Additional Insights")
+                col1, col2 = st.columns(2)
+                with col1:
+                    service_fig = create_spending_by_service_chart(df, "Spending by Service")
+                    st.plotly_chart(service_fig, use_container_width=True)
+                with col2:
+                    monthly_fig = create_monthly_trend_chart(df, "Monthly Spend Trend")
+                    st.plotly_chart(monthly_fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error during analysis: {str(e)}")
+                st.exception(e)
 
 else:
     st.info("Please upload billing CSV files to begin analysis, or click 'Load Sample Data' in the sidebar to try with sample data.")
