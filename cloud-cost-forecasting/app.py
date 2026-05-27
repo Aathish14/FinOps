@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import sys
+import os
+# Add the current directory to the path so we can import the app modules
+sys.path.append(os.path.dirname(__file__))
+
 from app.ingest.ingestor import ingest_billing_data
 from app.forecasting.prophet_model import create_forecasting_model
 from app.anomaly.isolation_forest import create_anomaly_detector
@@ -13,7 +18,6 @@ from app.visualization.plots import (
     create_monthly_trend_chart
 )
 import tempfile
-import os
 from datetime import datetime
 
 # Set page config
