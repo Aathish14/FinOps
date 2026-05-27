@@ -1,0 +1,13 @@
+bill/BillingPeriodStartDate,lineItem/ProductCode,lineItem/UsageAccountId,lineItem/UsageAmount,lineItem/UnblendedCost,product/region
+2024-01-01,AmazonEC2,123456789012,10.5,15.75,us-east-1
+2024-01-01,AmazonS3,123456789012,5.2,2.10,us-east-1
+2024-01-01,AmazonRDS,123456789012,2.0,25.00,us-east-1
+2024-01-02,AmazonEC2,123456789012,12.3,18.45,us-east-1
+2024-01-02,AmazonS3,123456789012,4.8,1.92,us-east-1
+2024-01-02,AmazonRDS,123456789012,2.1,26.25,us-east-1
+2024-01-03,AmazonEC2,123456789012,11.7,17.55,us-east-1
+2024-01-03,AmazonS3,123456789012,5.5,2.20,us-east-1
+2024-01-03,AmazonRDS,123456789012,1.9,23.75,us-east-1
+2024-01-04,AmazonEC2,123456789012,13.2,19.80,us-east-1
+2024-01-04,AmazonS3,123456789012,5.0,2.00,us-east-1
+2024-01-04,AmazonRDS,123456789012,2.2,27.50,us-east-1

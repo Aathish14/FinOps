@@ -1,0 +1,12 @@
+Placeholder for dashboard screenshot
+In a real deployment, this would show:
+1. Historical spending chart (line chart)
+2. Forecast chart with confidence intervals
+3. Anomaly detection overlay on spending chart
+4. Summary metrics cards
+5. Service breakdown chart
+6. Monthly trend chart
+7. Data table with forecast values
+8. Anomalies detected table
+
+The actual dashboard would be visible at the deployed Streamlit URL.

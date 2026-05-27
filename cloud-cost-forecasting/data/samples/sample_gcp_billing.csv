@@ -1,0 +1,13 @@
+usage_start_time,service.description,project.id,cost,usage.amount,usage.unit
+2024-01-01,Compute Engine,my-gcp-project,12.50,8.0,hours
+2024-01-01,Cloud Storage,my-gcp-project,3.20,10.0,GB-month
+2024-01-01,BigQuery,my-gcp-project,18.75,5.0,slots
+2024-01-02,Compute Engine,my-gcp-project,14.25,9.0,hours
+2024-01-02,Cloud Storage,my-gcp-project,3.50,11.0,GB-month
+2024-01-02,BigQuery,my-gcp-project,20.00,5.5,slots
+2024-01-03,Compute Engine,my-gcp-project,13.00,8.5,hours
+2024-01-03,Cloud Storage,my-gcp-project,3.30,10.5,GB-month
+2024-01-03,BigQuery,my-gcp-project,19.50,5.2,slots
+2024-01-04,Compute Engine,my-gcp-project,15.75,10.0,hours
+2024-01-04,Cloud Storage,my-gcp-project,3.80,12.0,GB-month
+2024-01-04,BigQuery,my-gcp-project,21.25,5.8,slots
