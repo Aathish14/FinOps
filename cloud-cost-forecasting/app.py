@@ -227,6 +227,7 @@ if uploaded_files:
                 with col2:
                     monthly_fig = create_monthly_trend_chart(df, "Monthly Spend Trend")
                     st.plotly_chart(monthly_fig, use_container_width=True)
+                    
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
                 st.exception(e)
