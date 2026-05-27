@@ -2,6 +2,8 @@
 
 A production-style MVP for forecasting cloud spending and detecting anomalies in AWS and GCP billing data.
 
+![Dashboard Screenshot](screenshots/dashboard.png)
+
 ## Overview
 
 This application helps FinOps and platform engineering teams proactively forecast cloud spend and automatically flag abnormal usage patterns. It ingests raw billing CSV exports, applies time-series forecasting models (Prophet), layers anomaly detection (Isolation Forest) on top of forecasted values, and surfaces actionable alerts.
@@ -89,7 +91,13 @@ The deployment URL above follows the Streamlit Cloud format. The application is 
 
 ## Sample Output
 
-![Dashboard](screenshots/dashboard.png)
+![Dashboard Screenshot](screenshots/dashboard.png)
+
+### Forecasting View
+![Forecasting View](screenshots/forecasting.png)
+
+### Anomaly Detection View
+![Anomaly Detection View](screenshots/anomaly.png)
 
 ## Technical Details
 
