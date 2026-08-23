@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -319,14 +319,6 @@ class CostImpactScorer:
         """
         results = {}
         
-        # Merge with ground truth excess costs
-        merged = ranked_results.merge(
-            ground_truth[['date', 'excess_cost', 'is_anomaly']],
-            on='date',
-            how='left',
-            suffixes=('', '_gt')
-        )
-        
         for k in k_values:
             top_k = ranked_results.nlargest(k, 'cost_impact_score')
             
@@ -393,9 +385,7 @@ def run_cost_aware_comparison(
         ThresholdAnomalyDetector,
         RawCostIsolationForest,
         ResidualIsolationForest,
-        compute_residuals,
         evaluate_anomaly_detection,
-        create_ground_truth_labels
     )
     
     # Prepare ground truth labels
@@ -430,13 +420,9 @@ def run_cost_aware_comparison(
     
     # Method D: Cost-Aware Ranking (using RawCost_IF scores)
     logger.info("Running Cost-Aware Ranking...")
-    cost_scorer = CostImpactScorer()
     
     # Get RawCost_IF scores for cost-aware ranking
     raw_if_scores = raw_if.score_samples(test_data)
-    
-    # Get RawCost_IF predictions for classification
-    y_pred_raw_if = raw_if.predict(test_data)
     
     # Rank anomalies using cost-impact scoring
     ranked_results = CostImpactScorer().rank_anomalies(
@@ -469,10 +455,7 @@ if __name__ == '__main__':
     
     # Test with synthetic benchmark
     from experiments.anomaly.baselines import (
-        ThresholdAnomalyDetector,
         RawCostIsolationForest,
-        ResidualIsolationForest,
-        compute_residuals,
         create_ground_truth_labels
     )
     from experiments.forecasting.baselines import ProphetForecaster

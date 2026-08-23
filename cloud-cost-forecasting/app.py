@@ -18,6 +18,8 @@ from app.visualization.plots import (
     create_monthly_trend_chart
 )
 from app.tracking.tracker import get_tracker
+from app.anomaly.cost_aware import CostImpactScorer
+from app.anomaly.explanations import AnomalyExplainer, format_anomaly_for_ui
 import tempfile
 from datetime import datetime
 
@@ -220,6 +222,42 @@ if uploaded_files:
                     'anomaly_rate': n_anomalies / len(anomaly_labels) if len(anomaly_labels) > 0 else 0.0
                 })
                 
+                # Cost-Impact Ranking
+                st.subheader("Cost-Impact Anomaly Prioritization")
+                cost_scorer = CostImpactScorer()
+                
+                # Prepare test data for cost-impact ranking
+                test_with_pred = test_with_pred.rename(columns={'y': 'cost_usd', 'ds': 'date'})
+                test_actual = test_with_pred['y'].values
+                test_predicted = test_with_pred['predicted'].values
+                
+                # Get anomaly scores from the detector (using the same features)
+                anomaly_scores = anomaly_detector.score_samples(anomaly_features)
+                
+                # Rank anomalies by cost-impact
+                ranked_results = CostImpactScorer().rank_anomalies(
+                    test_data=test_with_pred[['date', 'cost_usd']].rename(columns={'y': 'cost_usd'}),
+                    anomaly_scores=anomaly_detector.score_samples(anomaly_features),
+                    anomaly_labels=anomaly_labels,
+                    actual_costs=test_with_pred['y'].values,
+                    expected_costs=test_with_pred['predicted'].values,
+                    mape=None
+                )
+                
+                # Generate explanations for top anomalies
+                explainer = AnomalyExplainer()
+                explanations = explainer.explain_batch(
+                    ranked_results,
+                    top_k=10
+                )
+                
+                # Log cost-aware ranking metrics
+                n_anomalies = int(anomaly_labels.sum())
+                tracker.log_metrics({
+                    'n_anomalies_detected': n_anomalies,
+                    'anomaly_rate': n_anomalies / len(anomaly_labels) if len(anomaly_labels) > 0 else 0.0
+                })
+                
                 # Create forecast visualization (historical + forecast)
                 forecast_fig = plot_forecast_with_intervals(
                     historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
@@ -228,18 +266,45 @@ if uploaded_files:
                 )
                 st.plotly_chart(forecast_fig, use_container_width=True)
                 
-                # Show anomalies in TEST/holdout period
-                anomalies_df = test_with_pred[test_with_pred['is_anomaly'] == 1]
-                if not anomalies_df.empty:
-                    anomaly_fig = plot_anomalies(
-                        df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
-                        anomaly_df=anomalies_df[['date', 'y']].rename(columns={'y': 'cost_usd'}),
-                        title="Anomalies Detected in Holdout Period (Test Set)"
-                    )
-                    st.plotly_chart(anomaly_fig, use_container_width=True)
+                # Show cost-impact ranked anomalies
+                st.subheader("Cost-Impact Anomaly Prioritization")
+                
+                # Display top-K anomalies by cost-impact
+                top_k = 10
+                top_anomalies = ranked_results.nlargest(10, 'cost_impact_score')
+                
+                # Display anomaly table with cost-impact prioritization
+                if not top_anomalies.empty:
+                    display_cols = ['date', 'observed_cost', 'expected_cost', 'excess_cost', 
+                                   'relative_deviation', 'anomaly_score', 'cost_impact_score',
+                                   'anomaly_label', 'cost_impact_rank']
+                    display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'excess_cost',
+                                                'relative_deviation', 'anomaly_score', 'cost_impact_score',
+                                                'anomaly_label', 'cost_impact_rank']].copy()
+                    display_df['date'] = display_df['date'].dt.date
+                    display_df['observed_cost'] = display_df['observed_cost'].apply(lambda x: f"${x:,.2f}")
+                    display_df['expected_cost'] = display_df['expected_cost'].apply(lambda x: f"${x:,.2f}")
+                    display_df['excess_cost'] = display_df['excess_cost'].apply(lambda x: f"${x:,.2f}")
+                    display_df['relative_deviation'] = display_df['relative_deviation'].apply(lambda x: f"{x:.1%}")
+                    display_df['anomaly_score'] = display_df['anomaly_score'].apply(lambda x: f"{x:.3f}")
+                    display_df['cost_impact_score'] = display_df['cost_impact_score'].apply(lambda x: f"{x:.3f}")
+                    display_df['anomaly_label'] = display_df['anomaly_label'].apply(lambda x: "⚠️ ANOMALY" if x == 1 else "Normal")
                     
-                    st.subheader("Detected Anomalies in Holdout Period")
-                    st.dataframe(anomalies_df[['date', 'y', 'predicted', 'residual', 'anomaly_score']].rename(columns={'y': 'actual_cost', 'predicted': 'forecasted_cost'}))
+                    # Add severity badge
+                    display_df['severity'] = display_df['anomaly_label'].apply(lambda x: "🔴 HIGH" if x == 1 else "🟢 Normal")
+                    
+                    st.dataframe(display_df, use_container_width=True)
+                    
+                    # Show explanations for top anomalies
+                    st.subheader("Anomaly Explanations")
+                    explainer = AnomalyExplainer()
+                    explanations = explainer.explain_batch(ranked_results, top_k=5)
+                    
+                    for exp in explanations:
+                        with st.expander(f"Rank #{exp['cost_impact_rank']} - {exp['date']} ({exp['provider']}) - ${exp['excess_cost']:,.2f} excess"):
+                            st.write(exp['explanation'])
+                            st.caption(f"Cost-Impact Score: {exp['cost_impact_score']:.3f} | Excess: ${exp['excess_cost']:,.2f}")
+                
                 else:
                     st.info("No anomalies detected in the holdout test period.")
                 
