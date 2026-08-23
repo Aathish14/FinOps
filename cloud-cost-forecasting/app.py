@@ -199,7 +199,7 @@ if uploaded_files:
                 anomaly_features['residual_rolling_mean_7'] = anomaly_features['residual'].rolling(7, min_periods=1).mean()
                 anomaly_features['residual_rolling_std_7'] = anomaly_features['residual'].rolling(7, min_periods=1).std()
                 # Fill NaN values
-                anomaly_features = anomaly_features.fillna(method='bfill').fillna(method='ffill')
+                anomaly_features = anomaly_features.bfill().ffill()
                 
                 # Fit anomaly detector on TEST residuals (not training data)
                 anomaly_detector = create_anomaly_detector(contamination=0.05)
