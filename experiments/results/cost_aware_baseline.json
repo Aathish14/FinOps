@@ -1,0 +1,92 @@
+{
+  "timestamp": "2026-08-23T18:23:08.364529",
+  "config": {
+    "initial_train_days": 90,
+    "test_horizon": 7,
+    "step": 7,
+    "contamination": 0.05
+  },
+  "anomaly_baseline": {
+    "AWS": {
+      "Threshold": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "pr_auc": 0.01835016835016835,
+        "n_true_anomalies": 2,
+        "n_predicted_anomalies": 2,
+        "n_true_positives": 2,
+        "n_false_positives": 0,
+        "n_false_negatives": 0
+      },
+      "RawCost_IF": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "pr_auc": 0.7916666666666666,
+        "n_true_anomalies": 2,
+        "n_predicted_anomalies": 3,
+        "n_true_positives": 2,
+        "n_false_positives": 1,
+        "n_false_negatives": 0
+      },
+      "Residual_IF": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "pr_auc": 0.41666666666666663,
+        "n_true_anomalies": 2,
+        "n_predicted_anomalies": 3,
+        "n_true_positives": 2,
+        "n_false_positives": 1,
+        "n_false_negatives": 0
+      }
+    },
+    "GCP": {
+      "Threshold": {
+        "precision": 1.0,
+        "recall": 0.1,
+        "f1": 0.18181818181818182,
+        "pr_auc": 0.12987734376219057,
+        "n_true_anomalies": 10,
+        "n_predicted_anomalies": 1,
+        "n_true_positives": 1,
+        "n_false_positives": 0,
+        "n_false_negatives": 9
+      },
+      "RawCost_IF": {
+        "precision": 0.3333333333333333,
+        "recall": 0.1,
+        "f1": 0.15384615384615385,
+        "pr_auc": 0.2831664105671544,
+        "n_true_anomalies": 10,
+        "n_predicted_anomalies": 3,
+        "n_true_positives": 1,
+        "n_false_positives": 2,
+        "n_false_negatives": 9
+      },
+      "Residual_IF": {
+        "precision": 0.3333333333333333,
+        "recall": 0.1,
+        "f1": 0.15384615384615385,
+        "pr_auc": 0.2581948717877323,
+        "n_true_anomalies": 10,
+        "n_predicted_anomalies": 3,
+        "n_true_positives": 1,
+        "n_false_positives": 2,
+        "n_false_negatives": 9
+      }
+    }
+  },
+  "dataset_info": {
+    "benchmark_path": "experiments/data/synthetic_benchmark.csv",
+    "detailed_path": "experiments/data/synthetic_benchmark_detailed.csv",
+    "anomaly_path": "experiments/data/ground_truth_anomalies.csv",
+    "n_days": 180,
+    "n_providers": 2,
+    "n_services": 10,
+    "anomaly_events": 7,
+    "anomaly_days": 38
+  },
+  "key_finding": "Residual_IF does NOT outperform RawCost_IF. RawCost_IF has higher PR-AUC on both providers."
+}
