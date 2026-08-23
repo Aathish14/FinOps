@@ -7,8 +7,8 @@ by estimated financial impact rather than just statistical deviation.
 
 Core concept:
 - excess_cost = max(observed - expected, 0)
-- cost_impact_score = anomaly_score * excess_cost * confidence_weight
-- Supports three ranking variants: score_only, excess_cost_only, combined
+- cost_impact_score = normalized_score + alpha * normalized_excess_cost * confidence * gate
+- Supports gated additive combination to prevent high-cost normal days from dominating
 """
 
 import sys
@@ -29,6 +29,14 @@ class CostImpactScorer:
     
     Transforms raw anomaly scores into cost-impact-aware rankings
     by incorporating financial impact (excess cost) and forecast confidence.
+    
+    Uses a gated additive combination to prevent high-cost normal days
+    from dominating the ranking:
+    
+        cost_impact = norm_score + alpha * norm_excess_cost * confidence * gate
+    
+    where gate = 1 if anomaly_score > gate_threshold, else 0.
+    This prevents high-cost normal days from dominating the ranking.
     """
     
     def __init__(
@@ -36,21 +44,30 @@ class CostImpactScorer:
         confidence_weight: float = 1.0,
         cost_weight: float = 1.0,
         score_weight: float = 1.0,
-        min_excess_cost: float = 0.01
+        min_excess_cost: float = 0.01,
+        alpha: float = 0.5,
+        gate_threshold: float = 0.5
     ):
         """
         Initialize cost-impact scorer.
         
         Args:
             confidence_weight: Weight for forecast confidence (1 - MAPE)
-            cost_weight: Weight for excess cost magnitude
+            cost_weight: Weight for excess cost magnitude in additive combination
             score_weight: Weight for raw anomaly score
             min_excess_cost: Minimum excess cost to consider (avoids noise)
+            alpha: Scaling factor for cost contribution in additive combination
+            gate_threshold: Normalized anomaly score threshold for gate activation.
+                           Only observations with normalized anomaly score above
+                           this threshold receive cost-weighting boost.
+                           Default 0.5 corresponds to median anomaly score.
         """
         self.confidence_weight = confidence_weight
         self.cost_weight = cost_weight
         self.score_weight = score_weight
         self.min_excess_cost = min_excess_cost
+        self.alpha = alpha
+        self.gate_threshold = gate_threshold
         
     def compute_excess_cost(
         self,
@@ -93,7 +110,7 @@ class CostImpactScorer:
         Lower MAPE = higher confidence.
         """
         if mape is None or np.isnan(mape):
-            return default_confidence
+            return 0.5
         # Confidence = 1 - MAPE, clipped to [0, 1]
         return float(np.clip(1 - mape, 0, 1))
     
@@ -105,14 +122,17 @@ class CostImpactScorer:
         normalize: bool = True
     ) -> np.ndarray:
         """
-        Compute cost-impact score combining anomaly score, excess cost, and confidence.
+        Compute cost-impact score using gated additive combination.
         
-        Formula: cost_impact = (score_weight * normalized_score) * 
-                                (cost_weight * normalized_excess_cost) * 
-                                (confidence_weight * confidence)
+        Formula: cost_impact = norm_score + alpha * norm_excess_cost * confidence * gate
+        
+        where gate = 1 if norm_score > gate_threshold else 0
+        
+        This prevents high-cost normal days from dominating the ranking
+        by only applying cost-weighting when anomaly evidence is sufficient.
         
         Args:
-            anomaly_scores: Raw anomaly scores (higher = more anomalous)
+            anomaly_scores: Raw anomaly scores (for IF: more negative = more anomalous)
             excess_costs: Excess cost values
             confidence: Forecast confidence [0, 1]
             normalize: Whether to normalize components to [0, 1]
@@ -120,23 +140,23 @@ class CostImpactScorer:
         Returns:
             Cost-impact scores
         """
-        # Normalize anomaly scores to [0, 1] if requested
-        if normalize and len(anomaly_scores) > 1:
-            score_min, score_max = anomaly_scores.min(), anomaly_scores.max()
-            if score_max > score_min:
-                norm_scores = (anomaly_scores - score_min) / (score_max - score_min)
-            else:
-                norm_scores = np.ones_like(anomaly_scores) * 0.5
+        # Convert anomaly scores to positive magnitude (higher = more anomalous)
+        # For Isolation Forest: scores are negative, more negative = more anomalous
+        if anomaly_scores.min() < 0:
+            # Likely Isolation Forest scores: negate to make higher = more anomalous
+            anomaly_magnitude = -anomaly_scores
         else:
-            # For Isolation Forest, scores are negative (more negative = more anomalous)
-            # Convert to positive anomaly magnitude
-            norm_scores = -anomaly_scores if anomaly_scores.min() < 0 else anomaly_scores
-            if normalize and len(norm_scores) > 1:
-                s_min, s_max = norm_scores.min(), norm_scores.max()
-                if s_max > s_min:
-                    norm_scores = (norm_scores - s_min) / (s_max - s_min)
-                else:
-                    norm_scores = np.ones_like(norm_scores) * 0.5
+            anomaly_magnitude = anomaly_scores
+        
+        # Normalize anomaly magnitude to [0, 1] if requested
+        if normalize and len(anomaly_magnitude) > 1:
+            score_min, score_max = anomaly_magnitude.min(), anomaly_magnitude.max()
+            if score_max > score_min:
+                norm_scores = (anomaly_magnitude - score_min) / (score_max - score_min)
+            else:
+                norm_scores = np.ones_like(anomaly_magnitude) * 0.5
+        else:
+            norm_scores = np.ones_like(anomaly_magnitude) * 0.5
         
         # Normalize excess costs
         if normalize and len(excess_costs) > 1:
@@ -154,11 +174,13 @@ class CostImpactScorer:
                 else:
                     norm_costs = np.ones_like(norm_costs) * 0.5
         
-        # Combine: multiplicative combination ensures all factors matter
+        # Gate: only apply cost-weighting when anomaly evidence is sufficient
+        gate = (norm_scores > self.gate_threshold).astype(float)
+        
+        # Gated additive combination: norm_score + alpha * norm_cost * confidence * gate
         cost_impact = (
-            (self.score_weight * norm_scores) *
-            (self.cost_weight * norm_costs) *
-            (self.confidence_weight * confidence)
+            self.score_weight * norm_scores +
+            self.alpha * self.cost_weight * norm_costs * self.confidence_weight * confidence * gate
         )
         
         return cost_impact
@@ -413,21 +435,23 @@ def run_cost_aware_comparison(
     # Get RawCost_IF scores for cost-aware ranking
     raw_if_scores = raw_if.score_samples(test_data)
     
+    # Get RawCost_IF predictions for classification
+    y_pred_raw_if = raw_if.predict(test_data)
+    
     # Rank anomalies using cost-impact scoring
     ranked_results = CostImpactScorer().rank_anomalies(
         test_data=test_data,
         anomaly_scores=raw_if_scores,
-        anomaly_labels=results['RawCost_IF'].get('y_pred', np.zeros(len(test_data))),
+        anomaly_labels=y_pred_b,  # Use RawCost_IF predictions for labels
         actual_costs=test_data['cost_usd'].values,
         expected_costs=test_predicted,
         mape=None  # Could pass MAPE here if available
     )
     
-    # Evaluate cost-aware ranking
-    y_pred_cost_aware = (ranked_results['cost_impact_score'] > 0).astype(int)
-    # For cost-aware, we use the cost_impact_score as the score
+    # Evaluate cost-aware ranking using RawCost_IF predictions for classification
+    # but cost_impact_score for ranking quality evaluation
     y_scores_cost_aware = ranked_results['cost_impact_score'].values
-    results['CostAware_IF'] = evaluate_anomaly_detection(y_true, y_pred_cost_aware, y_scores_cost_aware)
+    results['CostAware_IF'] = evaluate_anomaly_detection(y_true, y_pred_b, y_scores_cost_aware)
     
     # Store ranking details
     results['CostAware_Ranking'] = ranked_results.to_dict('records')
