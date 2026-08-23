@@ -2,9 +2,8 @@ import pandas as pd
 import numpy as np
 from prophet import Prophet
 import logging
-from typing import Dict, List, Tuple, Optional
-import mlflow
-import mlflow.pyfunc
+from typing import Dict
+from sklearn.metrics import mean_absolute_percentage_error, mean_squared_error, mean_absolute_error
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class ForecastingModel:
             forecast = forecast.rename(columns={
                 'ds': 'date',
                 'yhat': 'forecast_cost_usd',
-                'yhat_lower': 'lower_bound_80',  # Using 80% as default, can be adjusted
+                'yhat_lower': 'lower_bound_80',
                 'yhat_upper': 'upper_bound_80'
             })
             # Select and return the required columns
@@ -53,26 +52,58 @@ class ForecastingModel:
             
         return result
     
+    def predict_on_dates(self, dates: pd.DataFrame) -> pd.DataFrame:
+        """Generate predictions for specific dates (used for evaluation on test set)."""
+        if not self.is_fitted:
+            raise ValueError("Model must be fitted before making predictions")
+        
+        if self.model_type == 'prophet':
+            # Create future dataframe with the specific dates
+            future = pd.DataFrame({'ds': pd.to_datetime(dates['date'])})
+            forecast = self.model.predict(future)
+            return forecast[['ds', 'yhat']].rename(columns={'ds': 'date', 'yhat': 'predicted'})
+        else:
+            raise ValueError(f"Unsupported model type: {self.model_type}")
+    
     def evaluate(self, test_data: pd.DataFrame) -> Dict[str, float]:
-        """Evaluate the model on test data."""
+        """Evaluate the model on test data using genuine metrics."""
         if not self.is_fitted:
             raise ValueError("Model must be fitted before evaluation")
             
-        logger.info("Evaluating model on test data")
+        logger.info(f"Evaluating model on {len(test_data)} test samples")
         
-        # Generate predictions for the test period
-        test_dates = test_data[['date']].copy()
-        # We need to predict for the same dates as in test_data
-        # For simplicity, we'll generate a forecast that covers the test period
-        # and then merge with actual values
+        # Generate predictions for the test dates
+        predictions_df = self.predict_on_dates(test_data[['date']].copy())
         
-        # In a real implementation, we would use the model to predict on the test dates
-        # For now, we'll return dummy metrics
+        # Merge predictions with actuals
+        eval_df = test_data[['date', 'cost_usd']].copy()
+        eval_df = eval_df.merge(predictions_df, on='date', how='inner')
+        
+        if len(eval_df) == 0:
+            logger.warning("No overlapping dates for evaluation")
+            return {'mape': np.nan, 'rmse': np.nan, 'mae': np.nan}
+        
+        y_true = eval_df['cost_usd'].values
+        y_pred = eval_df['predicted'].values
+        
+        # Calculate genuine metrics
+        # Handle zero values for MAPE
+        mask = y_true != 0
+        if mask.any():
+            mape = mean_absolute_percentage_error(y_true[mask], y_pred[mask])
+        else:
+            mape = np.nan
+            
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        mae = mean_absolute_error(y_true, y_pred)
+        
         metrics = {
-            'mape': np.random.uniform(0.05, 0.15),  # Random MAPE between 5% and 15%
-            'rmse': np.random.uniform(10, 50),
-            'mae': np.random.uniform(5, 25)
+            'mape': float(mape) if not np.isnan(mape) else None,
+            'rmse': float(rmse),
+            'mae': float(mae)
         }
+        
+        logger.info(f"Evaluation metrics: MAPE={metrics['mape']}, RMSE={metrics['rmse']:.2f}, MAE={metrics['mae']:.2f}")
         return metrics
 
 def create_forecasting_model(model_type: str = 'prophet') -> ForecastingModel:

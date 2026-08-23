@@ -2,9 +2,6 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
 import logging
-from typing import Union, List
-import mlflow
-import mlflow.sklearn
 
 logger = logging.getLogger(__name__)
 

@@ -17,6 +17,7 @@ from app.visualization.plots import (
     create_spending_by_service_chart,
     create_monthly_trend_chart
 )
+from app.tracking.tracker import get_tracker
 import tempfile
 from datetime import datetime
 
@@ -42,7 +43,6 @@ st.sidebar.info(
     It uses:
     - Prophet for time series forecasting
     - Isolation Forest for anomaly detection
-    - MLflow for experiment tracking (not shown in UI)
     """
 )
 
@@ -59,9 +59,10 @@ uploaded_files = st.sidebar.file_uploader(
 if not uploaded_files:
     st.sidebar.write("Or use sample data:")
     if st.sidebar.button("Load Sample Data"):
-        # Load sample data
-        aws_file = "data/samples/sample_aws_billing.csv"
-        gcp_file = "data/samples/sample_gcp_billing.csv"
+        # Load sample data - use paths relative to this script
+        base_dir = os.path.dirname(__file__)
+        aws_file = os.path.join(base_dir, "data", "samples", "sample_aws_billing.csv")
+        gcp_file = os.path.join(base_dir, "data", "samples", "sample_gcp_billing.csv")
         uploaded_files = [aws_file, gcp_file]
         st.sidebar.success("Sample data loaded!")
 
@@ -116,6 +117,10 @@ if uploaded_files:
     if st.button("Run Analysis", type="primary"):
         with st.spinner("Running forecasting and anomaly detection..."):
             try:
+                # Initialize MLflow tracker
+                tracker = get_tracker()
+                run_id = tracker.start_run(run_name=f"forecasting_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                
                 # We'll analyze each service/account group separately
                 # For simplicity, we'll aggregate by date and service
                 # In a real system, we might want to do per service/account
@@ -128,19 +133,29 @@ if uploaded_files:
                 # For forecasting, we'll use the total daily spend
                 daily_df = df.groupby('date')['cost_usd'].sum().reset_index()
                 daily_df = daily_df.rename(columns={'date': 'ds', 'cost_usd': 'y'})
+                daily_df = daily_df.sort_values('ds').reset_index(drop=True)
                 
-                # Split data for forecasting (use last 30% as test, but we'll forecast forward)
-                # We'll use all data to train, then forecast forward
+                # Chronological train/test split (80/20)
+                # Use first 80% for training, last 20% for evaluation
                 train_size = int(len(daily_df) * 0.8)
-                train_data = daily_df[:train_size]
-                # We don't have test data for future dates, so we'll just train on all data for forecasting
-                # But for evaluation we could hold out some recent points
+                train_data = daily_df[:train_size].copy()
+                test_data = daily_df[train_size:].copy()
                 
-                # Create and fit forecasting model
+                st.info(f"Training on {len(train_data)} days, evaluating on {len(test_data)} days")
+                
+                # Create and fit forecasting model on training data
                 forecast_model = create_forecasting_model('prophet')
                 forecast_model.fit(train_data)
                 
-                # Generate forecast
+                # Log model parameters to MLflow
+                tracker.log_params({
+                    'model_type': 'prophet',
+                    'train_size': len(train_data),
+                    'test_size': len(test_data),
+                    'forecast_horizon': forecast_horizon
+                })
+                
+                # Generate forecast for the future (beyond all historical data)
                 forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
                 # Rename columns for consistency with our visualization function
                 forecast_df = forecast_df.rename(columns={
@@ -150,46 +165,62 @@ if uploaded_files:
                     'yhat_upper': 'upper_bound_80'
                 })
                 
-                # Calculate residuals for anomaly detection (on training data)
-                # We need to get predictions on the training data to compute residuals
-                train_pred = forecast_model.predict(periods=0, freq='D')  # This doesn't work as expected
-                # Instead, let's get in-sample predictions
-                # We'll create a future dataframe that includes the training dates
-                train_future = forecast_model.model.make_future_dataframe(periods=0)
-                train_forecast = forecast_model.model.predict(train_future)
-                # Merge with actuals
-                train_with_pred = train_data.copy()
-                train_with_pred['predicted'] = train_forecast['yhat'].values
-                train_with_pred['residual'] = train_with_pred['y'] - train_with_pred['predicted']
+                # Evaluate on test set (holdout period)
+                eval_metrics = forecast_model.evaluate(test_data)
                 
-                # Prepare features for anomaly detection
-                # We'll use: residual, residual_lag1, residual_rolling_mean_7, etc.
-                # For simplicity, we'll use just the residual and some basic features
-                anomaly_features = train_with_pred[['residual']].copy()
+                # Log evaluation metrics to MLflow
+                tracker.log_metrics({
+                    'mape': eval_metrics['mape'] if eval_metrics['mape'] is not None else 0.0,
+                    'rmse': eval_metrics['rmse'],
+                    'mae': eval_metrics['mae']
+                })
+                
+                # Display evaluation metrics
+                st.subheader("Forecast Evaluation (on Holdout Test Set)")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    mape_str = f"{eval_metrics['mape']:.2%}" if eval_metrics['mape'] is not None else "N/A (zero actuals)"
+                    st.metric("MAPE", mape_str)
+                with col2:
+                    st.metric("RMSE", f"${eval_metrics['rmse']:.2f}")
+                with col3:
+                    st.metric("MAE", f"${eval_metrics['mae']:.2f}")
+                
+                # Compute residuals on TEST data for anomaly detection
+                # Get predictions on test dates
+                test_predictions = forecast_model.predict_on_dates(test_data[['ds']].rename(columns={'ds': 'date'}))
+                test_with_pred = test_data.copy()
+                test_with_pred = test_with_pred.merge(test_predictions, on='date', how='inner')
+                test_with_pred['residual'] = test_with_pred['y'] - test_with_pred['predicted']
+                
+                # Prepare features for anomaly detection on TEST residuals
+                anomaly_features = test_with_pred[['residual']].copy()
                 anomaly_features['residual_lag1'] = anomaly_features['residual'].shift(1)
                 anomaly_features['residual_rolling_mean_7'] = anomaly_features['residual'].rolling(7, min_periods=1).mean()
                 anomaly_features['residual_rolling_std_7'] = anomaly_features['residual'].rolling(7, min_periods=1).std()
                 # Fill NaN values
                 anomaly_features = anomaly_features.fillna(method='bfill').fillna(method='ffill')
                 
-                # Fit anomaly detector
-                anomaly_detector = create_anomaly_detector(contamination=0.05)  # Expect 5% anomalies
+                # Fit anomaly detector on TEST residuals (not training data)
+                anomaly_detector = create_anomaly_detector(contamination=0.05)
                 anomaly_detector.fit(anomaly_features)
                 
-                # Get anomaly scores and predictions
+                # Get anomaly scores and predictions on TEST data
                 anomaly_scores = anomaly_detector.score_samples(anomaly_features)
                 anomaly_predictions = anomaly_detector.predict(anomaly_features)
-                # Convert to binary: 1 for anomaly, 0 for normal
                 anomaly_labels = (anomaly_predictions == -1).astype(int)
                 
-                # Add to dataframe
-                train_with_pred['anomaly_score'] = anomaly_scores
-                train_with_pred['is_anomaly'] = anomaly_labels
+                test_with_pred['anomaly_score'] = anomaly_scores
+                test_with_pred['is_anomaly'] = anomaly_labels
                 
-                # For future dates (forecast period), we don't have actuals, so we can't compute residuals
-                # We'll just show the forecast without anomaly detection for future dates
+                # Log anomaly detection metrics
+                n_anomalies = int(anomaly_labels.sum())
+                tracker.log_metrics({
+                    'n_anomalies_detected': n_anomalies,
+                    'anomaly_rate': n_anomalies / len(anomaly_labels) if len(anomaly_labels) > 0 else 0.0
+                })
                 
-                # Create forecast visualization
+                # Create forecast visualization (historical + forecast)
                 forecast_fig = plot_forecast_with_intervals(
                     historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
                     forecast_df=forecast_df,
@@ -197,23 +228,23 @@ if uploaded_files:
                 )
                 st.plotly_chart(forecast_fig, use_container_width=True)
                 
-                # Show anomalies in historical data
-                anomalies_df = train_with_pred[train_with_pred['is_anomaly'] == 1]
+                # Show anomalies in TEST/holdout period
+                anomalies_df = test_with_pred[test_with_pred['is_anomaly'] == 1]
                 if not anomalies_df.empty:
                     anomaly_fig = plot_anomalies(
                         df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
-                        anomaly_df=anomalies_df[['date', 'cost_usd']],
-                        title="Historical Spend with Detected Anomalies"
+                        anomaly_df=anomalies_df[['date', 'y']].rename(columns={'y': 'cost_usd'}),
+                        title="Anomalies Detected in Holdout Period (Test Set)"
                     )
                     st.plotly_chart(anomaly_fig, use_container_width=True)
                     
-                    st.subheader("Detected Anomalies")
-                    st.dataframe(anomalies_df[['date', 'cost_usd', 'anomaly_score']])
+                    st.subheader("Detected Anomalies in Holdout Period")
+                    st.dataframe(anomalies_df[['date', 'y', 'predicted', 'residual', 'anomaly_score']].rename(columns={'y': 'actual_cost', 'predicted': 'forecasted_cost'}))
                 else:
-                    st.info("No anomalies detected in the historical data.")
+                    st.info("No anomalies detected in the holdout test period.")
                 
                 # Show forecast table
-                st.subheader("Forecast Values")
+                st.subheader("Future Forecast Values")
                 forecast_display = forecast_df[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']].copy()
                 forecast_display['date'] = forecast_display['date'].dt.date
                 st.dataframe(forecast_display)
@@ -227,6 +258,10 @@ if uploaded_files:
                 with col2:
                     monthly_fig = create_monthly_trend_chart(df, "Monthly Spend Trend")
                     st.plotly_chart(monthly_fig, use_container_width=True)
+                
+                # End MLflow run
+                tracker.end_run()
+                st.success(f"MLflow run completed: {run_id}")
                     
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")

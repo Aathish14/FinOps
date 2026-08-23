@@ -3,7 +3,6 @@ import mlflow.sklearn
 import logging
 import os
 from typing import Dict, Any, Optional
-import json
 import pandas as pd
 from datetime import datetime
 
@@ -93,7 +92,7 @@ class ExperimentTracker:
             except Exception as e:
                 logger.warning(f"Failed to log model: {e}")
         else:
-            logger.debug(f"No active run. Model not logged.")
+            logger.debug("No active run. Model not logged.")
     
     def log_figure(self, figure, artifact_file: str):
         """Log a matplotlib figure to the current run."""
