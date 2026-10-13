@@ -78,7 +78,7 @@ The repository includes sample AWS and GCP billing CSV files in `data/samples/` 
 
 ## Deployment
 
-The application is deployed publicly at: [https://share.streamlit.io/aathish14/finops/main/app.py](https://share.streamlit.io/aathish14/finops/main/app.py)
+The application is deployed publicly at: [https://finops-cloud-cost-forecast.streamlit.app/](https://finops-cloud-cost-forecast.streamlit.app/)
 
 ### Local Run Instructions
 To run the application locally:
