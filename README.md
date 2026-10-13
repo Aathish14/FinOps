@@ -41,6 +41,10 @@ cloud-cost-forecasting/
 └── app.py                # Main Streamlit application
 ```
 
+## GitDiagram
+
+[![Architecture diagram of aathish14/finops](https://gitdiagram.com/aathish14/finops/diagram.png)](https://gitdiagram.com/aathish14/finops?utm_source=readme&utm_medium=picture)
+
 ## Installation
 
 1. Clone the repository:
