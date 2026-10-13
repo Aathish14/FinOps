@@ -45,6 +45,10 @@ cloud-cost-forecasting/
 
 [![Architecture diagram of aathish14/finops](https://gitdiagram.com/aathish14/finops/diagram.png)](https://gitdiagram.com/aathish14/finops?utm_source=readme&utm_medium=picture)
 
+## README badge
+
+[![Architecture diagram](https://gitdiagram.com/diagram-badge.svg)](https://gitdiagram.com/aathish14/finops?utm_source=readme&utm_medium=badge)
+
 ## Installation
 
 1. Clone the repository:
