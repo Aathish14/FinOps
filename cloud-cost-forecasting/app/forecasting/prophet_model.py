@@ -83,6 +83,12 @@ class ForecastingModel:
         
         # Merge predictions with actuals
         eval_df = test_data[['date', 'cost_usd']].copy()
+        # Normalize eval_df['date'] to timezone-naive UTC so it can merge with
+        # predictions_df['date'], which predict_on_dates() already normalizes.
+        # Both dataframes must use the same datetime representation before the
+        # inner join; otherwise pandas raises a ValueError on mixed timezone
+        # awareness.
+        eval_df['date'] = pd.to_datetime(eval_df['date'], utc=True).dt.tz_localize(None)
         eval_df = eval_df.merge(predictions_df, on='date', how='inner')
         
         if len(eval_df) == 0:

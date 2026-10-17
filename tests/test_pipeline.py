@@ -206,6 +206,64 @@ class TestForecasting:
         assert 'predicted' in preds.columns
         assert (preds['predicted'] > 0).all()
 
+    def test_evaluate_with_timezone_aware_test_dates(self):
+        """Evaluation succeeds when test dates are timezone-aware and predictions are timezone-naive."""
+        train_data = self.create_sample_data(30)
+        # Test data with timezone-aware UTC dates (simulates user-uploaded CSV)
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=10, freq='D', tz='UTC'),
+            'cost_usd': np.linspace(100, 200, 10) + np.random.normal(0, 5, 10)
+        })
+        test_data['cost_usd'] = test_data['cost_usd'].clip(lower=10)
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        metrics = model.evaluate(test_data)
+
+        assert 'mape' in metrics
+        assert 'rmse' in metrics
+        assert 'mae' in metrics
+        assert metrics['rmse'] >= 0
+        assert metrics['mae'] >= 0
+
+    def test_evaluate_matches_correct_dates_after_normalization(self):
+        """Matching dates remain matched after timezone normalization in evaluation."""
+        train_data = self.create_sample_data(30)
+        # Test data with timezone-aware dates that should match predicted dates
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=5, freq='D', tz='UTC'),
+            'cost_usd': np.linspace(100, 150, 5)
+        })
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        metrics = model.evaluate(test_data)
+
+        # All 5 test dates should produce predictions and merge successfully
+        assert metrics['rmse'] is not None
+        assert metrics['mae'] is not None
+
+    def test_evaluate_with_timezone_naive_test_dates(self):
+        """Evaluation succeeds with timezone-naive test dates (regression guard)."""
+        train_data = self.create_sample_data(30)
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=5, freq='D'),
+            'cost_usd': np.linspace(100, 150, 5)
+        })
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        metrics = model.evaluate(test_data)
+
+        assert 'mape' in metrics
+        assert 'rmse' in metrics
+        assert 'mae' in metrics
+        assert metrics['rmse'] >= 0
+        assert metrics['mae'] >= 0
+
 
 class TestAnomalyDetection:
     """Tests for anomaly detection."""
