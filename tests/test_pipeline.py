@@ -16,14 +16,14 @@ from app.anomaly.isolation_forest import create_anomaly_detector
 
 class TestIngestion:
     """Tests for billing data ingestion."""
-    
+
     def test_aws_ingestion(self):
         """Test AWS CSV ingestion produces valid DataFrame."""
         base_dir = os.path.join(os.path.dirname(__file__), '..', 'cloud-cost-forecasting')
         aws_file = os.path.join(base_dir, 'data', 'samples', 'sample_aws_billing.csv')
-        
+
         df = ingest_billing_data([aws_file])
-        
+
         assert len(df) == 360  # 90 days * 4 services
         assert list(df.columns) == [
             'date', 'cloud_provider', 'service_name', 'account_id',
@@ -32,27 +32,27 @@ class TestIngestion:
         assert (df['cloud_provider'] == 'AWS').all()
         assert pd.api.types.is_datetime64_any_dtype(df['date'])
         assert (df['cost_usd'] > 0).all()
-    
+
     def test_gcp_ingestion(self):
         """Test GCP CSV ingestion produces valid DataFrame."""
         base_dir = os.path.join(os.path.dirname(__file__), '..', 'cloud-cost-forecasting')
         gcp_file = os.path.join(base_dir, 'data', 'samples', 'sample_gcp_billing.csv')
-        
+
         df = ingest_billing_data([gcp_file])
-        
+
         assert len(df) == 360  # 90 days * 4 services
         assert (df['cloud_provider'] == 'GCP').all()
         assert pd.api.types.is_datetime64_any_dtype(df['date'])
         assert (df['cost_usd'] > 0).all()
-    
+
     def test_combined_ingestion(self):
         """Test combined AWS + GCP ingestion."""
         base_dir = os.path.join(os.path.dirname(__file__), '..', 'cloud-cost-forecasting')
         aws_file = os.path.join(base_dir, 'data', 'samples', 'sample_aws_billing.csv')
         gcp_file = os.path.join(base_dir, 'data', 'samples', 'sample_gcp_billing.csv')
-        
+
         df = ingest_billing_data([aws_file, gcp_file])
-        
+
         assert len(df) == 720
         assert df['cloud_provider'].nunique() == 2
         assert df['date'].is_monotonic_increasing
@@ -60,7 +60,7 @@ class TestIngestion:
 
 class TestForecasting:
     """Tests for forecasting model."""
-    
+
     def create_sample_data(self, n_days=60):
         """Create synthetic daily spend data for testing."""
         dates = pd.date_range(start='2024-01-01', periods=n_days, freq='D')
@@ -70,39 +70,39 @@ class TestForecasting:
         noise = np.random.normal(0, 5, n_days)
         costs = trend + seasonality + noise
         costs = np.maximum(costs, 10)  # Ensure positive
-        
+
         return pd.DataFrame({'ds': dates, 'y': costs})
-    
+
     def test_prophet_fit_predict(self):
         """Test Prophet model fits and predicts."""
         train_data = self.create_sample_data(40)
-        
+
         model = create_forecasting_model('prophet')
         model.fit(train_data)
-        
+
         assert model.is_fitted
         assert model.model is not None
-        
+
         forecast = model.predict(periods=14)
-        
+
         assert len(forecast) == 40 + 14  # historical + future
         assert 'forecast_cost_usd' in forecast.columns
         assert 'lower_bound_80' in forecast.columns
         assert 'upper_bound_80' in forecast.columns
         assert (forecast['lower_bound_80'] <= forecast['forecast_cost_usd']).all()
         assert (forecast['forecast_cost_usd'] <= forecast['upper_bound_80']).all()
-    
+
     def test_evaluate_on_test_set(self):
         """Test evaluation on holdout test set produces genuine metrics."""
         data = self.create_sample_data(50)
         train_data = data[:35]
         test_data = data[35:].rename(columns={'ds': 'date', 'y': 'cost_usd'})
-        
+
         model = create_forecasting_model('prophet')
         model.fit(train_data)
-        
+
         metrics = model.evaluate(test_data)
-        
+
         assert 'mape' in metrics
         assert 'rmse' in metrics
         assert 'mae' in metrics
@@ -113,17 +113,95 @@ class TestForecasting:
         # Metrics should be reasonable (not random)
         assert metrics['rmse'] < 100  # Sanity check
         assert metrics['mae'] < 100
-    
+
     def test_predict_on_dates(self):
         """Test prediction on specific dates."""
         train_data = self.create_sample_data(40)
         test_dates = pd.DataFrame({'date': pd.date_range('2024-02-10', periods=5, freq='D')})
-        
+
         model = create_forecasting_model('prophet')
         model.fit(train_data)
-        
+
         preds = model.predict_on_dates(test_dates)
-        
+
+        assert len(preds) == 5
+        assert 'predicted' in preds.columns
+        assert (preds['predicted'] > 0).all()
+
+    def test_fit_with_timezone_aware_dates(self):
+        """Timezone-aware UTC dates are normalized to timezone-naive before fitting Prophet."""
+        dates = pd.date_range(start='2024-01-01', periods=20, freq='D', tz='UTC')
+        trend = np.linspace(100, 200, 20)
+        costs = trend + np.random.normal(0, 5, 20)
+        costs = np.maximum(costs, 10)
+
+        train_data = pd.DataFrame({'ds': dates, 'y': costs})
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        assert model.is_fitted
+        assert model.model is not None
+
+        forecast = model.predict(periods=7)
+        assert len(forecast) == 20 + 7
+        assert 'forecast_cost_usd' in forecast.columns
+
+    def test_fit_with_timezone_naive_dates(self):
+        """Timezone-naive dates continue to work unchanged."""
+        dates = pd.date_range(start='2024-01-01', periods=20, freq='D')
+        trend = np.linspace(100, 200, 20)
+        costs = trend + np.random.normal(0, 5, 20)
+        costs = np.maximum(costs, 10)
+
+        train_data = pd.DataFrame({'ds': dates, 'y': costs})
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        assert model.is_fitted
+        assert model.model is not None
+
+        forecast = model.predict(periods=7)
+        assert len(forecast) == 20 + 7
+        assert 'forecast_cost_usd' in forecast.columns
+
+    def test_fit_normalizes_ds_to_timezone_naive(self):
+        """The ds column passed to Prophet.fit() is timezone-naive."""
+        from unittest.mock import patch, MagicMock
+
+        captured = {}
+
+        mock_prophet_instance = MagicMock()
+        mock_prophet_instance.fit = MagicMock(
+            side_effect=lambda df: captured.update(
+                {'ds': df['ds'], 'df_columns': list(df.columns)}
+            )
+        )
+
+        with patch('app.forecasting.prophet_model.Prophet', return_value=mock_prophet_instance):
+            model = create_forecasting_model('prophet')
+
+            dates = pd.date_range(start='2024-01-01', periods=10, freq='D', tz='UTC')
+            train_data = pd.DataFrame({'ds': dates, 'y': np.linspace(100, 200, 10)})
+
+            model.fit(train_data)
+
+        assert 'ds' in captured
+        assert captured['ds'].dt.tz is None, f"ds should be timezone-naive, got tz={captured['ds'].dt.tz}"
+        assert 'ds' in captured['df_columns']
+        assert 'y' in captured['df_columns']
+
+    def test_predict_on_dates_with_timezone_aware_dates(self):
+        """predict_on_dates normalizes timezone-aware input dates."""
+        train_data = self.create_sample_data(20)
+        test_dates = pd.DataFrame({'date': pd.date_range('2024-02-10', periods=5, freq='D', tz='UTC')})
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        preds = model.predict_on_dates(test_dates)
+
         assert len(preds) == 5
         assert 'predicted' in preds.columns
         assert (preds['predicted'] > 0).all()
@@ -131,7 +209,7 @@ class TestForecasting:
 
 class TestAnomalyDetection:
     """Tests for anomaly detection."""
-    
+
     def test_isolation_forest_fit_predict(self):
         """Test Isolation Forest fits and predicts."""
         np.random.seed(42)
@@ -143,21 +221,21 @@ class TestAnomalyDetection:
             'residual_rolling_mean_7': np.random.normal(0, 5, n_samples),
             'residual_rolling_std_7': np.abs(np.random.normal(5, 2, n_samples))
         })
-        
+
         detector = create_anomaly_detector(contamination=0.05)
         detector.fit(normal_data)
-        
+
         assert detector.is_fitted
-        
+
         predictions = detector.predict(normal_data)
         scores = detector.score_samples(normal_data)
-        
+
         assert len(predictions) == n_samples
         assert len(scores) == n_samples
         assert set(predictions).issubset({-1, 1})
         # Most should be normal (1)
         assert (predictions == 1).sum() > n_samples * 0.8
-    
+
     def test_anomaly_detection_on_residuals(self):
         """Test anomaly detection on forecast residuals."""
         np.random.seed(42)
@@ -165,20 +243,20 @@ class TestAnomalyDetection:
         residuals = np.random.normal(0, 10, 50)
         residuals[10] = 100  # Inject anomaly
         residuals[25] = -80  # Inject anomaly
-        
+
         feature_data = pd.DataFrame({
             'residual': residuals,
             'residual_lag1': np.roll(residuals, 1),
             'residual_rolling_mean_7': pd.Series(residuals).rolling(7, min_periods=1).mean(),
             'residual_rolling_std_7': pd.Series(residuals).rolling(7, min_periods=1).std()
         }).bfill().ffill()
-        
+
         detector = create_anomaly_detector(contamination=0.1)
         detector.fit(feature_data)
-        
+
         predictions = detector.predict(feature_data)
         anomaly_labels = (predictions == -1).astype(int)
-        
+
         # Should detect the injected anomalies
         assert anomaly_labels[10] == 1
         assert anomaly_labels[25] == 1
@@ -188,7 +266,7 @@ class TestAnomalyDetection:
 
 class TestIntegration:
     """Integration tests for the full pipeline."""
-    
+
     def create_daily_data(self, n_days=40):
         """Create daily aggregated spend data."""
         dates = pd.date_range(start='2024-01-01', periods=n_days, freq='D')
@@ -197,47 +275,47 @@ class TestIntegration:
         noise = np.random.normal(0, 5, n_days)
         costs = trend + seasonality + noise
         costs = np.maximum(costs, 10)
-        
+
         return pd.DataFrame({'ds': dates, 'y': costs})
-    
+
     def test_full_pipeline(self):
         """Test ingestion -> forecasting -> anomaly detection pipeline."""
         daily_data = self.create_daily_data(40)
-        
+
         # Train/test split
         train_size = int(len(daily_data) * 0.8)
         train_data = daily_data[:train_size]
         test_data = daily_data[train_size:].rename(columns={'ds': 'date', 'y': 'cost_usd'})
-        
+
         # Forecasting
         model = create_forecasting_model('prophet')
         model.fit(train_data)
-        
+
         forecast = model.predict(periods=14)
         assert len(forecast) == len(train_data) + 14
-        
+
         # Evaluation
         metrics = model.evaluate(test_data)
         assert metrics['rmse'] >= 0
         assert metrics['mae'] >= 0
-        
+
         # Anomaly detection on test residuals
         test_preds = model.predict_on_dates(test_data[['date']])
         test_with_pred = test_data.merge(test_preds, on='date')
         test_with_pred['residual'] = test_with_pred['cost_usd'] - test_with_pred['predicted']
-        
+
         feature_data = pd.DataFrame({
             'residual': test_with_pred['residual'],
             'residual_lag1': test_with_pred['residual'].shift(1),
             'residual_rolling_mean_7': test_with_pred['residual'].rolling(7, min_periods=1).mean(),
             'residual_rolling_std_7': test_with_pred['residual'].rolling(7, min_periods=1).std()
         }).bfill().ffill()
-        
+
         detector = create_anomaly_detector(contamination=0.1)
         detector.fit(feature_data)
-        
+
         anomaly_labels = (detector.predict(feature_data) == -1).astype(int)
-        
+
         # Should complete without errors
         assert len(anomaly_labels) == len(test_data)
 

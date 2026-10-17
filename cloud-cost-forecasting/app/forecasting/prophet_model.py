@@ -21,6 +21,11 @@ class ForecastingModel:
             self.model = Prophet(**kwargs)
             # Prophet expects columns 'ds' and 'y'
             df = train_data.rename(columns={'date': 'ds', 'cost_usd': 'y'})
+            # Normalize ds to timezone-naive UTC for Prophet compatibility.
+            # User-uploaded CSVs may contain timezone-aware timestamps (e.g.,
+            # "2026-04-07T00:00:00Z"), which Prophet rejects. Convert to UTC
+            # and strip timezone metadata while preserving timestamp instants.
+            df['ds'] = pd.to_datetime(df['ds'], utc=True).dt.tz_localize(None)
             self.model.fit(df)
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
@@ -59,7 +64,8 @@ class ForecastingModel:
         
         if self.model_type == 'prophet':
             # Create future dataframe with the specific dates
-            future = pd.DataFrame({'ds': pd.to_datetime(dates['date'])})
+            future_ds = pd.to_datetime(dates['date'], utc=True).dt.tz_localize(None)
+            future = pd.DataFrame({'ds': future_ds})
             forecast = self.model.predict(future)
             return forecast[['ds', 'yhat']].rename(columns={'ds': 'date', 'yhat': 'predicted'})
         else:
