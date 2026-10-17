@@ -2,11 +2,13 @@ import mlflow
 import mlflow.sklearn
 import logging
 import os
+import tempfile
 from typing import Dict, Any, Optional
 import pandas as pd
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
 
 class ExperimentTracker:
     def __init__(self, experiment_name: str = "cloud_cost_forecasting", run_name: Optional[str] = None):
@@ -109,17 +111,22 @@ class ExperimentTracker:
         """Log a pandas DataFrame as a CSV artifact."""
         if self.run is not None:
             try:
-                # Save DataFrame to a temporary CSV file
-                temp_path = f"/tmp/{artifact_file}"
-                data.to_csv(temp_path, index=False)
-                mlflow.log_artifact(temp_path, os.path.dirname(artifact_file))
-                # Clean up temp file
-                os.remove(temp_path)
-                logger.debug(f"Logged table as artifact: {artifact_file}")
+                # Save DataFrame to a temporary CSV file (cross-platform)
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as tmp:
+                    temp_path = tmp.name
+                    data.to_csv(temp_path, index=False)
+                try:
+                    mlflow.log_artifact(temp_path, os.path.dirname(artifact_file))
+                    logger.debug(f"Logged table as artifact: {artifact_file}")
+                finally:
+                    # Clean up temp file
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
             except Exception as e:
                 logger.warning(f"Failed to log table: {e}")
         else:
             logger.debug(f"No active run. Table not logged: {artifact_file}")
+
 
 def get_tracker(experiment_name: str = "cloud_cost_forecasting", run_name: Optional[str] = None) -> ExperimentTracker:
     """Factory function to get an experiment tracker."""

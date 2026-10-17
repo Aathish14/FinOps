@@ -1,13 +1,361 @@
 usage_start_time,service.description,project.id,cost,usage.amount,usage.unit
-2024-01-01,Compute Engine,my-gcp-project,12.50,8.0,hours
-2024-01-01,Cloud Storage,my-gcp-project,3.20,10.0,GB-month
-2024-01-01,BigQuery,my-gcp-project,18.75,5.0,slots
-2024-01-02,Compute Engine,my-gcp-project,14.25,9.0,hours
-2024-01-02,Cloud Storage,my-gcp-project,3.50,11.0,GB-month
-2024-01-02,BigQuery,my-gcp-project,20.00,5.5,slots
-2024-01-03,Compute Engine,my-gcp-project,13.00,8.5,hours
-2024-01-03,Cloud Storage,my-gcp-project,3.30,10.5,GB-month
-2024-01-03,BigQuery,my-gcp-project,19.50,5.2,slots
-2024-01-04,Compute Engine,my-gcp-project,15.75,10.0,hours
-2024-01-04,Cloud Storage,my-gcp-project,3.80,12.0,GB-month
-2024-01-04,BigQuery,my-gcp-project,21.25,5.8,slots
+2024-01-01,Compute Engine,project-beta,148.42,115.23,hours
+2024-01-01,Cloud Storage,project-alpha,17.15,89.07,GB-month
+2024-01-01,BigQuery,project-beta,48.71,108.17,slots
+2024-01-01,Cloud Functions,project-gamma,16.52,111.26,hours
+2024-01-02,Compute Engine,project-gamma,132.58,97.21,hours
+2024-01-02,Cloud Storage,project-beta,20.64,101.83,GB-month
+2024-01-02,BigQuery,project-alpha,58.05,140.72,slots
+2024-01-02,Cloud Functions,project-alpha,15.62,148.16,hours
+2024-01-03,Compute Engine,project-beta,120.71,120.22,hours
+2024-01-03,Cloud Storage,project-alpha,18.1,115.29,GB-month
+2024-01-03,BigQuery,project-beta,63.4,140.14,slots
+2024-01-03,Cloud Functions,project-beta,15.34,132.82,hours
+2024-01-04,Compute Engine,project-beta,117.05,93.01,hours
+2024-01-04,Cloud Storage,project-gamma,16.73,97.81,GB-month
+2024-01-04,BigQuery,project-beta,53.72,114.85,slots
+2024-01-04,Cloud Functions,project-beta,11.75,85.37,hours
+2024-01-05,Compute Engine,project-alpha,114.79,85.98,hours
+2024-01-05,Cloud Storage,project-gamma,19.24,104.57,GB-month
+2024-01-05,BigQuery,project-gamma,49.42,95.04,slots
+2024-01-05,Cloud Functions,project-beta,3.6,27.75,hours
+2024-01-06,Compute Engine,project-gamma,132.36,105.74,hours
+2024-01-06,Cloud Storage,project-gamma,19.28,105.12,GB-month
+2024-01-06,BigQuery,project-alpha,39.89,82.64,slots
+2024-01-06,Cloud Functions,project-beta,13.32,103.76,hours
+2024-01-07,Compute Engine,project-alpha,112.23,96.81,hours
+2024-01-07,Cloud Storage,project-beta,14.37,71.92,GB-month
+2024-01-07,BigQuery,project-alpha,47.2,103.83,slots
+2024-01-07,Cloud Functions,project-gamma,15.05,135.75,hours
+2024-01-08,Compute Engine,project-beta,119.16,83.89,hours
+2024-01-08,Cloud Storage,project-alpha,19.11,126.83,GB-month
+2024-01-08,BigQuery,project-gamma,51.12,92.66,slots
+2024-01-08,Cloud Functions,project-alpha,13.26,98.32,hours
+2024-01-09,Compute Engine,project-beta,132.65,110.86,hours
+2024-01-09,Cloud Storage,project-alpha,21.64,129.29,GB-month
+2024-01-09,BigQuery,project-alpha,65.08,116.71,slots
+2024-01-09,Cloud Functions,project-alpha,16.26,143.01,hours
+2024-01-10,Compute Engine,project-gamma,119.69,100.61,hours
+2024-01-10,Cloud Storage,project-gamma,22.38,132.64,GB-month
+2024-01-10,BigQuery,project-beta,49.42,117.44,slots
+2024-01-10,Cloud Functions,project-gamma,20.8,151.74,hours
+2024-01-11,Compute Engine,project-beta,123.02,117.62,hours
+2024-01-11,Cloud Storage,project-alpha,23.63,118.43,GB-month
+2024-01-11,BigQuery,project-gamma,50.79,118.18,slots
+2024-01-11,Cloud Functions,project-gamma,23.68,202.93,hours
+2024-01-12,Compute Engine,project-gamma,120.26,107.29,hours
+2024-01-12,Cloud Storage,project-beta,18.15,118.59,GB-month
+2024-01-12,BigQuery,project-beta,54.08,101.27,slots
+2024-01-12,Cloud Functions,project-beta,6.9,68.94,hours
+2024-01-13,Compute Engine,project-alpha,124.19,123.92,hours
+2024-01-13,Cloud Storage,project-alpha,15.76,97.42,GB-month
+2024-01-13,BigQuery,project-beta,38.91,91.68,slots
+2024-01-13,Cloud Functions,project-beta,9.08,70.44,hours
+2024-01-14,Compute Engine,project-gamma,127.81,122.61,hours
+2024-01-14,Cloud Storage,project-gamma,16.73,90.55,GB-month
+2024-01-14,BigQuery,project-alpha,35.06,82.55,slots
+2024-01-14,Cloud Functions,project-beta,7.62,59.02,hours
+2024-01-15,Compute Engine,project-alpha,144.73,115.24,hours
+2024-01-15,Cloud Storage,project-alpha,17.01,98.12,GB-month
+2024-01-15,BigQuery,project-beta,46.68,107.35,slots
+2024-01-15,Cloud Functions,project-beta,13.96,122.98,hours
+2024-01-16,Compute Engine,project-beta,110.74,105.69,hours
+2024-01-16,Cloud Storage,project-alpha,19.73,108.7,GB-month
+2024-01-16,BigQuery,project-gamma,55.54,110.89,slots
+2024-01-16,Cloud Functions,project-gamma,13.43,107.22,hours
+2024-01-17,Compute Engine,project-alpha,148.16,145.96,hours
+2024-01-17,Cloud Storage,project-gamma,23.43,146.96,GB-month
+2024-01-17,BigQuery,project-gamma,55.28,143.84,slots
+2024-01-17,Cloud Functions,project-alpha,20.84,152.65,hours
+2024-01-18,Compute Engine,project-alpha,124.26,102.97,hours
+2024-01-18,Cloud Storage,project-gamma,19.59,99.47,GB-month
+2024-01-18,BigQuery,project-beta,53.07,121.75,slots
+2024-01-18,Cloud Functions,project-beta,19.8,172.27,hours
+2024-01-19,Compute Engine,project-beta,124.49,117.15,hours
+2024-01-19,Cloud Storage,project-gamma,17.47,84.66,GB-month
+2024-01-19,BigQuery,project-gamma,48.0,93.22,slots
+2024-01-19,Cloud Functions,project-beta,14.11,99.09,hours
+2024-01-20,Compute Engine,project-alpha,107.49,100.89,hours
+2024-01-20,Cloud Storage,project-gamma,16.6,97.15,GB-month
+2024-01-20,BigQuery,project-gamma,59.57,147.92,slots
+2024-01-20,Cloud Functions,project-beta,13.09,113.93,hours
+2024-01-21,Compute Engine,project-alpha,128.67,118.8,hours
+2024-01-21,Cloud Storage,project-alpha,16.85,83.76,GB-month
+2024-01-21,BigQuery,project-gamma,52.04,131.89,slots
+2024-01-21,Cloud Functions,project-beta,8.61,76.57,hours
+2024-01-22,Compute Engine,project-alpha,121.59,98.24,hours
+2024-01-22,Cloud Storage,project-gamma,19.91,95.94,GB-month
+2024-01-22,BigQuery,project-beta,49.77,112.16,slots
+2024-01-22,Cloud Functions,project-gamma,19.52,131.69,hours
+2024-01-23,Compute Engine,project-alpha,132.12,116.18,hours
+2024-01-23,Cloud Storage,project-alpha,20.16,107.11,GB-month
+2024-01-23,BigQuery,project-beta,60.76,144.51,slots
+2024-01-23,Cloud Functions,project-gamma,13.01,105.31,hours
+2024-01-24,Compute Engine,project-beta,156.34,135.66,hours
+2024-01-24,Cloud Storage,project-gamma,21.04,120.53,GB-month
+2024-01-24,BigQuery,project-gamma,54.06,127.11,slots
+2024-01-24,Cloud Functions,project-alpha,23.8,190.47,hours
+2024-01-25,Compute Engine,project-alpha,128.32,88.51,hours
+2024-01-25,Cloud Storage,project-alpha,18.05,113.61,GB-month
+2024-01-25,BigQuery,project-beta,55.65,112.34,slots
+2024-01-25,Cloud Functions,project-alpha,15.36,137.24,hours
+2024-01-26,Compute Engine,project-beta,107.2,73.34,hours
+2024-01-26,Cloud Storage,project-gamma,17.57,92.26,GB-month
+2024-01-26,BigQuery,project-beta,46.22,84.63,slots
+2024-01-26,Cloud Functions,project-alpha,20.49,201.99,hours
+2024-01-27,Compute Engine,project-beta,135.9,98.32,hours
+2024-01-27,Cloud Storage,project-alpha,18.64,86.86,GB-month
+2024-01-27,BigQuery,project-gamma,32.03,60.35,slots
+2024-01-27,Cloud Functions,project-alpha,10.49,75.27,hours
+2024-01-28,Compute Engine,project-beta,132.97,99.45,hours
+2024-01-28,Cloud Storage,project-beta,19.24,107.76,GB-month
+2024-01-28,BigQuery,project-alpha,52.25,133.05,slots
+2024-01-28,Cloud Functions,project-beta,10.57,99.56,hours
+2024-01-29,Compute Engine,project-alpha,127.71,99.69,hours
+2024-01-29,Cloud Storage,project-gamma,18.58,86.22,GB-month
+2024-01-29,BigQuery,project-beta,52.36,131.5,slots
+2024-01-29,Cloud Functions,project-beta,9.76,79.59,hours
+2024-01-30,Compute Engine,project-beta,153.36,127.65,hours
+2024-01-30,Cloud Storage,project-beta,21.86,124.67,GB-month
+2024-01-30,BigQuery,project-alpha,43.41,98.01,slots
+2024-01-30,Cloud Functions,project-beta,20.37,161.66,hours
+2024-01-31,Compute Engine,project-beta,149.83,139.35,hours
+2024-01-31,Cloud Storage,project-alpha,23.07,106.67,GB-month
+2024-01-31,BigQuery,project-alpha,64.57,147.81,slots
+2024-01-31,Cloud Functions,project-gamma,21.86,208.5,hours
+2024-02-01,Compute Engine,project-alpha,168.49,155.28,hours
+2024-02-01,Cloud Storage,project-gamma,20.25,104.3,GB-month
+2024-02-01,BigQuery,project-alpha,49.83,104.87,slots
+2024-02-01,Cloud Functions,project-alpha,17.6,118.84,hours
+2024-02-02,Compute Engine,project-alpha,125.0,115.69,hours
+2024-02-02,Cloud Storage,project-beta,18.16,118.51,GB-month
+2024-02-02,BigQuery,project-gamma,53.88,95.81,slots
+2024-02-02,Cloud Functions,project-gamma,12.79,111.72,hours
+2024-02-03,Compute Engine,project-gamma,120.4,82.6,hours
+2024-02-03,Cloud Storage,project-gamma,20.58,125.99,GB-month
+2024-02-03,BigQuery,project-beta,44.41,83.74,slots
+2024-02-03,Cloud Functions,project-gamma,11.89,89.82,hours
+2024-02-04,Compute Engine,project-gamma,120.73,100.99,hours
+2024-02-04,Cloud Storage,project-alpha,18.4,91.13,GB-month
+2024-02-04,BigQuery,project-beta,39.92,93.1,slots
+2024-02-04,Cloud Functions,project-gamma,18.01,145.67,hours
+2024-02-05,Compute Engine,project-gamma,128.81,113.96,hours
+2024-02-05,Cloud Storage,project-beta,22.4,117.88,GB-month
+2024-02-05,BigQuery,project-beta,57.0,140.31,slots
+2024-02-05,Cloud Functions,project-beta,20.29,152.05,hours
+2024-02-06,Compute Engine,project-beta,141.43,106.53,hours
+2024-02-06,Cloud Storage,project-gamma,22.12,131.76,GB-month
+2024-02-06,BigQuery,project-alpha,51.06,128.64,slots
+2024-02-06,Cloud Functions,project-beta,25.44,252.36,hours
+2024-02-07,Compute Engine,project-alpha,132.77,117.11,hours
+2024-02-07,Cloud Storage,project-gamma,21.25,134.32,GB-month
+2024-02-07,BigQuery,project-gamma,59.71,140.75,slots
+2024-02-07,Cloud Functions,project-alpha,24.64,195.14,hours
+2024-02-08,Compute Engine,project-alpha,159.36,153.63,hours
+2024-02-08,Cloud Storage,project-alpha,20.78,97.09,GB-month
+2024-02-08,BigQuery,project-alpha,56.78,147.91,slots
+2024-02-08,Cloud Functions,project-gamma,18.35,172.81,hours
+2024-02-09,Compute Engine,project-gamma,138.0,121.28,hours
+2024-02-09,Cloud Storage,project-gamma,19.25,123.58,GB-month
+2024-02-09,BigQuery,project-alpha,44.13,107.38,slots
+2024-02-09,Cloud Functions,project-alpha,15.93,129.75,hours
+2024-02-10,Compute Engine,project-alpha,138.88,97.46,hours
+2024-02-10,Cloud Storage,project-alpha,19.1,125.51,GB-month
+2024-02-10,BigQuery,project-gamma,44.93,119.47,slots
+2024-02-10,Cloud Functions,project-gamma,5.5,53.94,hours
+2024-02-11,Compute Engine,project-beta,122.77,85.88,hours
+2024-02-11,Cloud Storage,project-beta,17.54,110.3,GB-month
+2024-02-11,BigQuery,project-beta,54.51,115.42,slots
+2024-02-11,Cloud Functions,project-beta,20.66,138.44,hours
+2024-02-12,Compute Engine,project-gamma,134.26,132.47,hours
+2024-02-12,Cloud Storage,project-beta,19.87,90.14,GB-month
+2024-02-12,BigQuery,project-beta,50.81,111.76,slots
+2024-02-12,Cloud Functions,project-alpha,16.82,145.86,hours
+2024-02-13,Compute Engine,project-beta,149.42,130.32,hours
+2024-02-13,Cloud Storage,project-gamma,24.15,114.23,GB-month
+2024-02-13,BigQuery,project-gamma,63.38,118.04,slots
+2024-02-13,Cloud Functions,project-beta,18.73,159.18,hours
+2024-02-14,Compute Engine,project-alpha,159.18,118.89,hours
+2024-02-14,Cloud Storage,project-gamma,23.42,139.27,GB-month
+2024-02-14,BigQuery,project-beta,65.64,133.38,slots
+2024-02-14,Cloud Functions,project-alpha,26.74,255.02,hours
+2024-02-15,Compute Engine,project-beta,148.14,130.17,hours
+2024-02-15,Cloud Storage,project-beta,18.23,99.7,GB-month
+2024-02-15,BigQuery,project-gamma,65.05,153.59,slots
+2024-02-15,Cloud Functions,project-beta,23.86,184.5,hours
+2024-02-16,Compute Engine,project-gamma,136.69,128.39,hours
+2024-02-16,Cloud Storage,project-gamma,17.7,97.85,GB-month
+2024-02-16,BigQuery,project-alpha,56.0,126.54,slots
+2024-02-16,Cloud Functions,project-gamma,19.63,179.47,hours
+2024-02-17,Compute Engine,project-gamma,135.35,121.31,hours
+2024-02-17,Cloud Storage,project-alpha,14.78,84.65,GB-month
+2024-02-17,BigQuery,project-alpha,47.56,104.06,slots
+2024-02-17,Cloud Functions,project-gamma,17.55,160.39,hours
+2024-02-18,Compute Engine,project-beta,146.45,107.59,hours
+2024-02-18,Cloud Storage,project-beta,17.91,109.16,GB-month
+2024-02-18,BigQuery,project-alpha,45.45,95.15,slots
+2024-02-18,Cloud Functions,project-beta,18.24,154.37,hours
+2024-02-19,Compute Engine,project-beta,142.37,134.43,hours
+2024-02-19,Cloud Storage,project-beta,20.92,102.4,GB-month
+2024-02-19,BigQuery,project-gamma,61.89,151.64,slots
+2024-02-19,Cloud Functions,project-gamma,23.84,183.21,hours
+2024-02-20,Compute Engine,project-gamma,466.78,165.91,hours
+2024-02-20,Cloud Storage,project-beta,78.12,130.47,GB-month
+2024-02-20,BigQuery,project-gamma,269.67,131.63,slots
+2024-02-20,Cloud Functions,project-gamma,54.85,176.69,hours
+2024-02-21,Compute Engine,project-beta,173.53,148.12,hours
+2024-02-21,Cloud Storage,project-beta,27.49,151.89,GB-month
+2024-02-21,BigQuery,project-alpha,61.8,155.19,slots
+2024-02-21,Cloud Functions,project-gamma,27.84,244.63,hours
+2024-02-22,Compute Engine,project-beta,145.27,134.85,hours
+2024-02-22,Cloud Storage,project-gamma,21.0,103.1,GB-month
+2024-02-22,BigQuery,project-gamma,54.62,113.04,slots
+2024-02-22,Cloud Functions,project-gamma,21.19,157.96,hours
+2024-02-23,Compute Engine,project-gamma,140.45,128.08,hours
+2024-02-23,Cloud Storage,project-beta,16.62,100.95,GB-month
+2024-02-23,BigQuery,project-gamma,48.63,113.96,slots
+2024-02-23,Cloud Functions,project-beta,25.2,177.92,hours
+2024-02-24,Compute Engine,project-gamma,135.01,134.09,hours
+2024-02-24,Cloud Storage,project-alpha,15.9,71.59,GB-month
+2024-02-24,BigQuery,project-gamma,63.16,151.46,slots
+2024-02-24,Cloud Functions,project-alpha,23.38,179.17,hours
+2024-02-25,Compute Engine,project-alpha,126.79,104.04,hours
+2024-02-25,Cloud Storage,project-alpha,16.51,89.32,GB-month
+2024-02-25,BigQuery,project-gamma,59.83,109.01,slots
+2024-02-25,Cloud Functions,project-alpha,23.23,193.27,hours
+2024-02-26,Compute Engine,project-alpha,139.11,135.52,hours
+2024-02-26,Cloud Storage,project-beta,18.8,123.53,GB-month
+2024-02-26,BigQuery,project-beta,64.32,170.08,slots
+2024-02-26,Cloud Functions,project-alpha,17.63,142.73,hours
+2024-02-27,Compute Engine,project-beta,148.21,101.91,hours
+2024-02-27,Cloud Storage,project-alpha,23.17,131.9,GB-month
+2024-02-27,BigQuery,project-gamma,50.96,106.33,slots
+2024-02-27,Cloud Functions,project-gamma,28.0,208.73,hours
+2024-02-28,Compute Engine,project-beta,158.63,155.29,hours
+2024-02-28,Cloud Storage,project-beta,24.86,156.2,GB-month
+2024-02-28,BigQuery,project-alpha,72.07,140.81,slots
+2024-02-28,Cloud Functions,project-alpha,20.56,168.84,hours
+2024-02-29,Compute Engine,project-beta,142.82,99.44,hours
+2024-02-29,Cloud Storage,project-alpha,25.51,145.19,GB-month
+2024-02-29,BigQuery,project-alpha,69.29,171.95,slots
+2024-02-29,Cloud Functions,project-beta,13.88,117.71,hours
+2024-03-01,Compute Engine,project-alpha,144.11,116.66,hours
+2024-03-01,Cloud Storage,project-alpha,18.83,123.25,GB-month
+2024-03-01,BigQuery,project-alpha,53.84,115.42,slots
+2024-03-01,Cloud Functions,project-gamma,26.87,246.25,hours
+2024-03-02,Compute Engine,project-gamma,150.93,123.72,hours
+2024-03-02,Cloud Storage,project-gamma,19.12,118.37,GB-month
+2024-03-02,BigQuery,project-beta,55.56,136.23,slots
+2024-03-02,Cloud Functions,project-alpha,22.0,147.99,hours
+2024-03-03,Compute Engine,project-alpha,124.9,93.91,hours
+2024-03-03,Cloud Storage,project-beta,20.38,111.0,GB-month
+2024-03-03,BigQuery,project-beta,58.33,132.33,slots
+2024-03-03,Cloud Functions,project-alpha,24.92,194.65,hours
+2024-03-04,Compute Engine,project-gamma,160.37,126.8,hours
+2024-03-04,Cloud Storage,project-beta,20.22,126.83,GB-month
+2024-03-04,BigQuery,project-beta,59.99,117.07,slots
+2024-03-04,Cloud Functions,project-alpha,17.94,125.23,hours
+2024-03-05,Compute Engine,project-gamma,502.34,167.69,hours
+2024-03-05,Cloud Storage,project-beta,70.35,165.48,GB-month
+2024-03-05,BigQuery,project-gamma,222.72,150.64,slots
+2024-03-05,Cloud Functions,project-gamma,111.84,271.7,hours
+2024-03-06,Compute Engine,project-alpha,156.61,114.02,hours
+2024-03-06,Cloud Storage,project-gamma,23.37,141.9,GB-month
+2024-03-06,BigQuery,project-gamma,75.07,198.04,slots
+2024-03-06,Cloud Functions,project-gamma,24.11,231.68,hours
+2024-03-07,Compute Engine,project-gamma,159.16,128.27,hours
+2024-03-07,Cloud Storage,project-beta,22.61,106.66,GB-month
+2024-03-07,BigQuery,project-gamma,58.6,150.11,slots
+2024-03-07,Cloud Functions,project-gamma,25.78,228.27,hours
+2024-03-08,Compute Engine,project-beta,133.05,90.0,hours
+2024-03-08,Cloud Storage,project-beta,20.6,101.17,GB-month
+2024-03-08,BigQuery,project-beta,53.45,135.79,slots
+2024-03-08,Cloud Functions,project-gamma,22.27,188.58,hours
+2024-03-09,Compute Engine,project-beta,140.28,108.21,hours
+2024-03-09,Cloud Storage,project-beta,20.82,130.42,GB-month
+2024-03-09,BigQuery,project-beta,59.82,150.25,slots
+2024-03-09,Cloud Functions,project-gamma,15.43,139.84,hours
+2024-03-10,Compute Engine,project-beta,134.69,110.01,hours
+2024-03-10,Cloud Storage,project-gamma,17.96,104.34,GB-month
+2024-03-10,BigQuery,project-gamma,48.76,123.16,slots
+2024-03-10,Cloud Functions,project-gamma,24.59,233.08,hours
+2024-03-11,Compute Engine,project-beta,137.16,122.35,hours
+2024-03-11,Cloud Storage,project-gamma,22.15,113.94,GB-month
+2024-03-11,BigQuery,project-gamma,64.2,127.1,slots
+2024-03-11,Cloud Functions,project-gamma,21.46,163.08,hours
+2024-03-12,Compute Engine,project-gamma,170.54,125.95,hours
+2024-03-12,Cloud Storage,project-gamma,23.14,113.78,GB-month
+2024-03-12,BigQuery,project-alpha,65.99,161.84,slots
+2024-03-12,Cloud Functions,project-gamma,32.34,298.14,hours
+2024-03-13,Compute Engine,project-gamma,173.74,115.83,hours
+2024-03-13,Cloud Storage,project-beta,25.22,118.3,GB-month
+2024-03-13,BigQuery,project-gamma,77.44,175.3,slots
+2024-03-13,Cloud Functions,project-gamma,27.19,218.7,hours
+2024-03-14,Compute Engine,project-beta,153.46,104.45,hours
+2024-03-14,Cloud Storage,project-gamma,21.07,136.61,GB-month
+2024-03-14,BigQuery,project-gamma,69.05,182.46,slots
+2024-03-14,Cloud Functions,project-alpha,22.33,205.02,hours
+2024-03-15,Compute Engine,project-alpha,155.13,135.91,hours
+2024-03-15,Cloud Storage,project-gamma,24.51,124.28,GB-month
+2024-03-15,BigQuery,project-alpha,51.2,96.49,slots
+2024-03-15,Cloud Functions,project-alpha,19.88,148.58,hours
+2024-03-16,Compute Engine,project-gamma,117.14,101.46,hours
+2024-03-16,Cloud Storage,project-beta,19.11,94.55,GB-month
+2024-03-16,BigQuery,project-gamma,63.99,164.52,slots
+2024-03-16,Cloud Functions,project-alpha,26.68,233.56,hours
+2024-03-17,Compute Engine,project-gamma,136.13,110.23,hours
+2024-03-17,Cloud Storage,project-beta,21.75,144.77,GB-month
+2024-03-17,BigQuery,project-alpha,70.79,141.72,slots
+2024-03-17,Cloud Functions,project-alpha,24.1,208.79,hours
+2024-03-18,Compute Engine,project-gamma,152.98,103.65,hours
+2024-03-18,Cloud Storage,project-alpha,25.27,158.87,GB-month
+2024-03-18,BigQuery,project-alpha,57.53,119.7,slots
+2024-03-18,Cloud Functions,project-alpha,23.11,167.21,hours
+2024-03-19,Compute Engine,project-gamma,177.59,159.99,hours
+2024-03-19,Cloud Storage,project-beta,27.74,154.9,GB-month
+2024-03-19,BigQuery,project-alpha,65.38,143.71,slots
+2024-03-19,Cloud Functions,project-gamma,23.89,199.55,hours
+2024-03-20,Compute Engine,project-alpha,177.11,118.24,hours
+2024-03-20,Cloud Storage,project-beta,24.44,134.3,GB-month
+2024-03-20,BigQuery,project-alpha,71.38,156.69,slots
+2024-03-20,Cloud Functions,project-alpha,29.94,232.69,hours
+2024-03-21,Compute Engine,project-alpha,151.76,123.81,hours
+2024-03-21,Cloud Storage,project-beta,27.86,155.79,GB-month
+2024-03-21,BigQuery,project-gamma,70.26,142.7,slots
+2024-03-21,Cloud Functions,project-alpha,27.32,255.26,hours
+2024-03-22,Compute Engine,project-alpha,139.98,95.39,hours
+2024-03-22,Cloud Storage,project-alpha,18.06,96.21,GB-month
+2024-03-22,BigQuery,project-gamma,66.88,150.49,slots
+2024-03-22,Cloud Functions,project-alpha,19.68,164.48,hours
+2024-03-23,Compute Engine,project-alpha,141.79,138.46,hours
+2024-03-23,Cloud Storage,project-gamma,18.87,100.42,GB-month
+2024-03-23,BigQuery,project-alpha,65.03,156.88,slots
+2024-03-23,Cloud Functions,project-alpha,20.16,155.2,hours
+2024-03-24,Compute Engine,project-beta,153.25,102.27,hours
+2024-03-24,Cloud Storage,project-gamma,21.35,107.1,GB-month
+2024-03-24,BigQuery,project-beta,66.28,164.99,slots
+2024-03-24,Cloud Functions,project-gamma,16.89,117.82,hours
+2024-03-25,Compute Engine,project-beta,171.86,118.64,hours
+2024-03-25,Cloud Storage,project-alpha,21.22,109.44,GB-month
+2024-03-25,BigQuery,project-beta,67.01,159.56,slots
+2024-03-25,Cloud Functions,project-alpha,26.37,253.84,hours
+2024-03-26,Compute Engine,project-beta,168.21,161.13,hours
+2024-03-26,Cloud Storage,project-beta,26.11,123.06,GB-month
+2024-03-26,BigQuery,project-beta,80.2,213.24,slots
+2024-03-26,Cloud Functions,project-beta,29.13,195.31,hours
+2024-03-27,Compute Engine,project-gamma,139.6,96.99,hours
+2024-03-27,Cloud Storage,project-alpha,28.34,128.71,GB-month
+2024-03-27,BigQuery,project-alpha,70.88,155.4,slots
+2024-03-27,Cloud Functions,project-alpha,32.25,222.23,hours
+2024-03-28,Compute Engine,project-gamma,153.55,136.81,hours
+2024-03-28,Cloud Storage,project-beta,27.2,153.69,GB-month
+2024-03-28,BigQuery,project-gamma,68.63,170.7,slots
+2024-03-28,Cloud Functions,project-gamma,32.95,269.13,hours
+2024-03-29,Compute Engine,project-beta,144.38,139.07,hours
+2024-03-29,Cloud Storage,project-beta,21.56,113.57,GB-month
+2024-03-29,BigQuery,project-alpha,69.72,147.17,slots
+2024-03-29,Cloud Functions,project-alpha,27.54,242.86,hours
+2024-03-30,Compute Engine,project-alpha,464.08,101.74,hours
+2024-03-30,Cloud Storage,project-gamma,66.13,116.1,GB-month
+2024-03-30,BigQuery,project-beta,229.59,125.09,slots
+2024-03-30,Cloud Functions,project-beta,60.7,161.0,hours

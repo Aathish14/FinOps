@@ -4,6 +4,51 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _validate_dataframe(df: pd.DataFrame, required_columns: list, context: str) -> None:
+    """Validate that a DataFrame has the required columns."""
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(
+            f"{context} requires column(s): {', '.join(missing)}. "
+            f"Available columns: {', '.join(df.columns)}"
+        )
+    
+    if df.empty:
+        raise ValueError(f"{context} received an empty DataFrame")
+
+
+def _validate_date_column(df: pd.DataFrame, context: str) -> None:
+    """Validate that the date column exists and is parseable."""
+    _validate_dataframe(df, ['date'], context)
+    
+    # Check if date column can be converted to datetime
+    try:
+        pd.to_datetime(df['date'])
+    except Exception as e:
+        raise ValueError(f"{context}: 'date' column contains unparseable values: {e}")
+
+
+def _validate_cost_column(df: pd.DataFrame, context: str) -> None:
+    """Validate that the cost_usd column exists and is numeric."""
+    _validate_dataframe(df, ['cost_usd'], context)
+    
+    if not pd.api.types.is_numeric_dtype(df['cost_usd']):
+        raise ValueError(
+            f"{context}: 'cost_usd' column must be numeric. "
+            f"Got dtype: {df['cost_usd'].dtype}"
+        )
+    
+    if df['cost_usd'].isna().any():
+        raise ValueError(f"{context}: 'cost_usd' column contains NaN values")
+    
+    if not np.isfinite(df['cost_usd']).all():
+        raise ValueError(f"{context}: 'cost_usd' column contains infinite values")
+
+
+import numpy as np
+
+
 def plot_historical_spending(df: pd.DataFrame, title: str = "Historical Cloud Spend") -> go.Figure:
     """
     Create an interactive line chart of historical spending over time.
@@ -14,7 +59,14 @@ def plot_historical_spending(df: pd.DataFrame, title: str = "Historical Cloud Sp
     
     Returns:
         Plotly figure object
+    
+    Raises:
+        ValueError: If required columns are missing or contain invalid data
     """
+    _validate_dataframe(df, ['date', 'cost_usd'], "Historical spending chart")
+    _validate_date_column(df, "Historical spending chart")
+    _validate_cost_column(df, "Historical spending chart")
+    
     # If we have multiple services/accounts, we can group by them
     if 'service_name' in df.columns and 'account_id' in df.columns:
         # Group by date and sum costs
@@ -40,6 +92,7 @@ def plot_historical_spending(df: pd.DataFrame, title: str = "Historical Cloud Sp
     
     return fig
 
+
 def plot_forecast_with_intervals(
     historical_df: pd.DataFrame,
     forecast_df: pd.DataFrame,
@@ -55,7 +108,23 @@ def plot_forecast_with_intervals(
     
     Returns:
         Plotly figure object
+    
+    Raises:
+        ValueError: If required columns are missing or contain invalid data
     """
+    _validate_dataframe(historical_df, ['date', 'cost_usd'], "Forecast chart (historical data)")
+    _validate_date_column(historical_df, "Forecast chart (historical data)")
+    _validate_cost_column(historical_df, "Forecast chart (historical data)")
+    
+    required_forecast_cols = ['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']
+    _validate_dataframe(forecast_df, required_forecast_cols, "Forecast chart (forecast data)")
+    _validate_date_column(forecast_df, "Forecast chart (forecast data)")
+    
+    # Check forecast cost columns are numeric
+    for col in ['forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']:
+        if not pd.api.types.is_numeric_dtype(forecast_df[col]):
+            raise ValueError(f"Forecast chart: '{col}' must be numeric. Got dtype: {forecast_df[col].dtype}")
+    
     fig = go.Figure()
     
     # Historical data
@@ -109,6 +178,7 @@ def plot_forecast_with_intervals(
     
     return fig
 
+
 def plot_anomalies(
     df: pd.DataFrame,
     anomaly_df: pd.DataFrame,
@@ -124,7 +194,20 @@ def plot_anomalies(
     
     Returns:
         Plotly figure object
+    
+    Raises:
+        ValueError: If required columns are missing or contain invalid data
     """
+    _validate_dataframe(df, ['date', 'cost_usd'], "Anomaly chart (historical data)")
+    _validate_date_column(df, "Anomaly chart (historical data)")
+    _validate_cost_column(df, "Anomaly chart (historical data)")
+    
+    # anomaly_df can be empty, but if not empty, validate it
+    if not anomaly_df.empty:
+        _validate_dataframe(anomaly_df, ['date', 'cost_usd'], "Anomaly chart (anomaly data)")
+        _validate_date_column(anomaly_df, "Anomaly chart (anomaly data)")
+        _validate_cost_column(anomaly_df, "Anomaly chart (anomaly data)")
+    
     fig = go.Figure()
     
     # Historical data
@@ -170,6 +253,7 @@ def plot_anomalies(
     
     return fig
 
+
 def create_spending_by_service_chart(df: pd.DataFrame, title: str = "Spending by Service") -> go.Figure:
     """
     Create a bar chart showing total spending by service.
@@ -180,7 +264,13 @@ def create_spending_by_service_chart(df: pd.DataFrame, title: str = "Spending by
     
     Returns:
         Plotly figure object
+    
+    Raises:
+        ValueError: If required columns are missing or contain invalid data
     """
+    _validate_dataframe(df, ['cost_usd'], "Spending by service chart")
+    _validate_cost_column(df, "Spending by service chart")
+    
     if 'service_name' not in df.columns:
         # Create a dummy service column if not present
         df = df.copy()
@@ -205,6 +295,7 @@ def create_spending_by_service_chart(df: pd.DataFrame, title: str = "Spending by
     
     return fig
 
+
 def create_monthly_trend_chart(df: pd.DataFrame, title: str = "Monthly Spend Trend") -> go.Figure:
     """
     Create a line chart showing monthly spending trends.
@@ -215,17 +306,30 @@ def create_monthly_trend_chart(df: pd.DataFrame, title: str = "Monthly Spend Tre
     
     Returns:
         Plotly figure object
+    
+    Raises:
+        ValueError: If required columns are missing or contain invalid data
     """
+    _validate_dataframe(df, ['date', 'cost_usd'], "Monthly spend trend chart")
+    _validate_date_column(df, "Monthly spend trend chart")
+    _validate_cost_column(df, "Monthly spend trend chart")
+    
     df_copy = df.copy()
     df_copy['date'] = pd.to_datetime(df_copy['date'])
-    df_copy['month'] = df_copy['date'].dt.to_period('M')
     
+    # Create a month column (period) for grouping
+    df_copy['month'] = df_copy['date'].dt.to_period('M')
+    # Group by month and sum the costs
     monthly_spend = df_copy.groupby('month')['cost_usd'].sum().reset_index()
-    monthly_spend['month_str'] = monthly_spend['month'].astype(str)
+    # Convert the month period to timestamp for plotting
+    monthly_spend['month'] = monthly_spend['month'].dt.to_timestamp()
+    
+    if monthly_spend.empty:
+        raise ValueError("Monthly spend trend chart: no data available after monthly aggregation")
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=monthly_spend['month_str'],
+        x=monthly_spend['month'],
         y=monthly_spend['cost_usd'],
         mode='lines+markers',
         name='Monthly Spend',
@@ -235,10 +339,12 @@ def create_monthly_trend_chart(df: pd.DataFrame, title: str = "Monthly Spend Tre
     fig.update_layout(
         title=title,
         xaxis_title='Month',
-        yaxis_title='Total Cost (USD)'
+        yaxis_title='Total Cost (USD)',
+        xaxis_tickformat='%b %Y'
     )
     
     return fig
+
 
 def save_plot_as_html(fig: go.Figure, file_path: str):
     """
@@ -250,6 +356,7 @@ def save_plot_as_html(fig: go.Figure, file_path: str):
     """
     fig.write_html(file_path)
     logger.info(f"Saved plot to {file_path}")
+
 
 def save_plot_as_image(fig: go.Figure, file_path: str, format: str = 'png', width: int = 1200, height: int = 800):
     """

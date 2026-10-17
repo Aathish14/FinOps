@@ -6,13 +6,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class AnomalyDetector:
-    def __init__(self, contamination: float = 0.03, random_state: int = 42):
+    def __init__(self, contamination: float = 0.03, random_state: int = 42, n_estimators: int = 200):
         self.contamination = contamination
         self.random_state = random_state
+        self.n_estimators = n_estimators
         self.model = IsolationForest(
             contamination=contamination,
             random_state=random_state,
-            n_estimators=200,
+            n_estimators=n_estimators,
             max_features=1.0,
             bootstrap=False
         )
@@ -52,6 +53,6 @@ class AnomalyDetector:
             'confusion_matrix': cm.tolist()
         }
 
-def create_anomaly_detector(contamination: float = 0.03, random_state: int = 42) -> AnomalyDetector:
+def create_anomaly_detector(contamination: float = 0.03, random_state: int = 42, n_estimators: int = 100) -> AnomalyDetector:
     """Factory function to create an anomaly detector."""
-    return AnomalyDetector(contamination=contamination, random_state=random_state)
+    return AnomalyDetector(contamination=contamination, random_state=random_state, n_estimators=n_estimators)
