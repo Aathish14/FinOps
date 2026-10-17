@@ -24,7 +24,7 @@ class TestIngestion:
         
         df = ingest_billing_data([aws_file])
         
-        assert len(df) == 12  # 4 days * 3 services
+        assert len(df) == 360  # 90 days * 4 services
         assert list(df.columns) == [
             'date', 'cloud_provider', 'service_name', 'account_id',
             'region', 'environment', 'usage_quantity', 'usage_unit', 'cost_usd'
@@ -40,7 +40,7 @@ class TestIngestion:
         
         df = ingest_billing_data([gcp_file])
         
-        assert len(df) == 12  # 4 days * 3 services
+        assert len(df) == 360  # 90 days * 4 services
         assert (df['cloud_provider'] == 'GCP').all()
         assert pd.api.types.is_datetime64_any_dtype(df['date'])
         assert (df['cost_usd'] > 0).all()
@@ -53,7 +53,7 @@ class TestIngestion:
         
         df = ingest_billing_data([aws_file, gcp_file])
         
-        assert len(df) == 24
+        assert len(df) == 720
         assert df['cloud_provider'].nunique() == 2
         assert df['date'].is_monotonic_increasing
 

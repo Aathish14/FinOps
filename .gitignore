@@ -28,6 +28,14 @@ Thumbs.db
 *.log
 err.log
 out.log
+streamlit*.out
+streamlit*.err
+
+# Generated artifacts
+tree.d
+tree.md
+current-tree.txt
+*.zip
 
 # Streamlit
 .streamlit/secrets.toml

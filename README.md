@@ -290,10 +290,13 @@ FinOps/
 │   └── run_experiments.py        # Full experiment runner
 ├── tests/                        # 20 tests (9 core + 11 explanations)
 ├── docs/
-│   ├── ARCHITECTURE.md
+│   ├── architecture/
+│   │   └── ARCHITECTURE.md
 │   ├── ML_METHODOLOGY.md
 │   ├── EXPERIMENTAL_VALIDATION.md
-│   └── FEATURES.md
+│   ├── FEATURES.md
+│   └── research/
+│       └── 14 research reports (moved from root)
 ├── requirements.txt              # Pinned deps (root)
 ├── .gitignore
 └── README.md
@@ -347,12 +350,12 @@ mlflow ui  # http://localhost:5000
 
 | Document | Purpose |
 |----------|---------|
-| `docs/ARCHITECTURE.md` | Pipeline diagram, module responsibilities |
+| `docs/architecture/ARCHITECTURE.md` | Pipeline diagram, module responsibilities |
 | `docs/ML_METHODOLOGY.md` | Models, baselines, evaluation, formulation |
 | `docs/EXPERIMENTAL_VALIDATION.md` | 180-day benchmark, rolling-origin, ablation |
 | `docs/FEATURES.md` | Buyer-facing feature matrix |
-| `COST_AWARE_PHASE3B_REPORT.md` | Phase 3B validation details |
-| `PHASE_4_FINAL_REPORT.md` | Phase 4 integration summary |
+| `docs/research/COST_AWARE_PHASE3B_REPORT.md` | Phase 3B validation details |
+| `docs/research/PHASE_4_FINAL_REPORT.md` | Phase 4 integration summary |
 
 ---
 
