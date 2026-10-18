@@ -171,7 +171,10 @@ if file_inputs:
         st.dataframe(df)
     
     # Preprocessing: ensure date is datetime and sort
-    df['date'] = pd.to_datetime(df['date'])
+    # Normalize to timezone-naive UTC so downstream merges with
+    # Prophet predictions (which are timezone-naive) do not fail with
+    # "trying to merge on datetime64[ns, UTC] and datetime64[ns]".
+    df['date'] = pd.to_datetime(df['date'], utc=True).dt.tz_localize(None)
     df = df.sort_values('date').reset_index(drop=True)
     
     # Validate data quality after ingestion
@@ -308,6 +311,8 @@ if file_inputs:
                 # Step 1: Generate predictions on TRAINING dates to get training residuals
                 train_predictions = forecast_model.predict_on_dates(train_data[['date']])
                 train_with_pred = train_data.copy()
+                # Normalize train date column to match predictions (both timezone-naive)
+                train_with_pred['date'] = pd.to_datetime(train_with_pred['date'], utc=True).dt.tz_localize(None)
                 train_with_pred = train_with_pred.merge(train_predictions, on='date', how='inner')
                 train_with_pred['residual'] = train_with_pred['cost_usd'] - train_with_pred['predicted']
                 
@@ -333,6 +338,8 @@ if file_inputs:
                 # Step 4: Generate predictions on TEST dates to get test residuals
                 test_predictions = forecast_model.predict_on_dates(test_data[['date']])
                 test_with_pred = test_data.copy()
+                # Normalize test date column to match predictions (both timezone-naive)
+                test_with_pred['date'] = pd.to_datetime(test_with_pred['date'], utc=True).dt.tz_localize(None)
                 test_with_pred = test_with_pred.merge(test_predictions, on='date', how='inner')
                 test_with_pred['residual'] = test_with_pred['cost_usd'] - test_with_pred['predicted']
                 

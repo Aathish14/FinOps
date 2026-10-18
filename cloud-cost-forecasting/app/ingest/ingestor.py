@@ -291,8 +291,8 @@ class BillingIngestor:
                 except Exception as e:
                     logger.warning(f"Could not convert column {col} to {dtype}: {e}")
         
-        # Convert date column (already done in loop, but we do it again to be safe)
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # Convert date column to timezone-naive datetime (already done in loop, but we do it again to be safe)
+        df['date'] = pd.to_datetime(df['date'], utc=True, errors='coerce').dt.tz_localize(None)
         
         # Validate the result
         self._validate_dataframe(df, "AWS CSV")
@@ -349,8 +349,8 @@ class BillingIngestor:
                 except Exception as e:
                     logger.warning(f"Could not convert column {col} to {dtype}: {e}")
         
-        # Convert date column (already done in loop, but we do it again to be safe)
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # Convert date column to timezone-naive datetime (already done in loop, but we do it again to be safe)
+        df['date'] = pd.to_datetime(df['date'], utc=True, errors='coerce').dt.tz_localize(None)
         
         # Validate the result
         self._validate_dataframe(df, "GCP CSV")
