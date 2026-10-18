@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import sys
 import os
+from pathlib import Path
 # Add the current directory to the path so we can import the app modules
 sys.path.append(os.path.dirname(__file__))
 
@@ -120,16 +121,32 @@ with st.sidebar.expander("Isolation Forest Anomaly Detection", expanded=True):
 # Use sample data if no files uploaded
 if not uploaded_files:
     st.sidebar.write("Or use sample data:")
-    if st.sidebar.button("Load Sample Data"):
-        # Load sample data - use paths relative to this script.
-        # Stored in session state so it persists across reruns
-        # (e.g. when the user subsequently clicks "Run Analysis").
-        base_dir = os.path.dirname(__file__)
-        st.session_state["sample_data_files"] = [
-            os.path.join(base_dir, "data", "samples", "sample_aws_billing.csv"),
-            os.path.join(base_dir, "data", "samples", "sample_gcp_billing.csv"),
-        ]
-        st.sidebar.success("Sample data loaded!")
+
+    # Discover available sample CSV files dynamically
+    samples_dir = Path(__file__).parent / "data" / "samples"
+    sample_files = []
+    if samples_dir.exists() and samples_dir.is_dir():
+        sample_files = sorted([f for f in samples_dir.glob("*.csv") if f.is_file()])
+
+    if sample_files:
+        # Create a mapping of display names to file paths
+        sample_options = {f.name: f for f in sample_files}
+        selected_sample = st.sidebar.selectbox(
+            "Sample Data CSV",
+            options=list(sample_options.keys()),
+            index=0,
+            help="Select a sample CSV file to load"
+        )
+
+        if st.sidebar.button("Load Sample Data"):
+            selected_path = sample_options[selected_sample]
+            # Store in session state so it persists across reruns
+            st.session_state["sample_data_files"] = [str(selected_path.resolve())]
+            st.sidebar.success(f"Loaded: {selected_sample}")
+    else:
+        st.sidebar.warning("No sample CSV files found in data/samples directory")
+        if st.sidebar.button("Load Sample Data"):
+            st.sidebar.error("No sample CSV files available")
 
 # Resolve the effective set of file inputs.
 #   - User uploads always take precedence over sample data.
