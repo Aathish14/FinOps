@@ -164,19 +164,19 @@ if file_inputs:
         except Exception as e:
             st.error(f"Error ingesting data: {str(e)}")
             st.stop()
-    
+
     # Show raw data
     if st.checkbox("Show raw data"):
         st.subheader("Raw Data")
         st.dataframe(df)
-    
+
     # Preprocessing: ensure date is datetime and sort
     # Normalize to timezone-naive UTC so downstream merges with
     # Prophet predictions (which are timezone-naive) do not fail with
     # "trying to merge on datetime64[ns, UTC] and datetime64[ns]".
     df['date'] = pd.to_datetime(df['date'], utc=True).dt.tz_localize(None)
     df = df.sort_values('date').reset_index(drop=True)
-    
+
     # Validate data quality after ingestion
     if df['cost_usd'].isna().any():
         st.error("Ingested data contains NaN values in cost_usd. Please check your CSV files.")
@@ -188,7 +188,7 @@ if file_inputs:
         st.warning("Some rows have missing usage_quantity values. These will be treated as unknown.")
     if not np.isfinite(df['usage_quantity']).all():
         st.warning("Some rows have infinite usage_quantity values. These will be treated as unknown.")
-    
+
     # Show data info
     st.subheader("Data Summary")
     col1, col2, col3, col4 = st.columns(4)
@@ -200,10 +200,10 @@ if file_inputs:
         st.metric("Cloud Providers", df['cloud_provider'].nunique())
     with col4:
         st.metric("Total Spend (USD)", f"${df['cost_usd'].sum():,.2f}")
-    
+
     # Forecasting and Anomaly Detection
     st.subheader("Forecasting & Anomaly Detection")
-    
+
     # Run analysis
     if st.button("Run Analysis", type="primary"):
         with st.spinner("Running forecasting and anomaly detection..."):
@@ -211,20 +211,20 @@ if file_inputs:
                 # Initialize MLflow tracker
                 tracker = get_tracker()
                 run_id = tracker.start_run(run_name=f"forecasting_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-                
+
                 # We'll analyze each service/account group separately
                 # For simplicity, we'll aggregate by date and service
                 # In a real system, we might want to do per service/account
-                
+
                 # Prepare data for visualization
                 # Historical spending chart
                 historical_fig = plot_historical_spending(df, "Historical Cloud Spend")
                 st.plotly_chart(historical_fig, width="stretch")
-                
+
                 # For forecasting, we'll use the total daily spend
                 daily_df = df.groupby('date')['cost_usd'].sum().reset_index()
                 daily_df = daily_df.sort_values('date').reset_index(drop=True)
-                
+
                 # Validate minimum data requirements
                 n_daily = len(daily_df)
                 if n_daily < MIN_DAILY_OBSERVATIONS_FORECASTING:
@@ -233,7 +233,7 @@ if file_inputs:
                         f"At least {MIN_DAILY_OBSERVATIONS_FORECASTING} are required for forecasting."
                     )
                     st.stop()
-                
+
                 # Validate forecast horizon
                 max_horizon = int(n_daily * MAX_FORECAST_HORIZON_RATIO)
                 if forecast_horizon > max_horizon:
@@ -243,15 +243,15 @@ if file_inputs:
                         f"({int(MAX_FORECAST_HORIZON_RATIO * 100)}% of history length)."
                     )
                     st.stop()
-                
+
                 # Chronological train/test split (80/20)
                 # Use first 80% for training, last 20% for evaluation
                 train_size = int(len(daily_df) * 0.8)
                 train_data = daily_df[:train_size].copy()
                 test_data = daily_df[train_size:].copy()
-                
+
                 st.info(f"Training on {len(train_data)} days, evaluating on {len(test_data)} days")
-                
+
                 # Create and fit forecasting model on training data
                 forecast_model = create_forecasting_model('prophet')
                 forecast_model.fit(
@@ -261,7 +261,7 @@ if file_inputs:
                     weekly_seasonality=weekly_seasonality,
                     yearly_seasonality=yearly_seasonality
                 )
-                
+
                 # Log model parameters to MLflow
                 tracker.log_params({
                     'model_type': 'prophet',
@@ -273,7 +273,7 @@ if file_inputs:
                     'weekly_seasonality': str(weekly_seasonality),
                     'yearly_seasonality': str(yearly_seasonality)
                 })
-                
+
                 # Generate forecast for the future (beyond all historical data)
                 forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
                 # Rename columns for consistency with our visualization function
@@ -283,17 +283,17 @@ if file_inputs:
                     'yhat_lower': 'lower_bound_80',
                     'yhat_upper': 'upper_bound_80'
                 })
-                
+
                 # Evaluate on test set (holdout period)
                 eval_metrics = forecast_model.evaluate(test_data)
-                
+
                 # Log evaluation metrics to MLflow
                 tracker.log_metrics({
                     'mape': eval_metrics['mape'] if eval_metrics['mape'] is not None else 0.0,
                     'rmse': eval_metrics['rmse'],
                     'mae': eval_metrics['mae']
                 })
-                
+
                 # Display evaluation metrics
                 st.subheader("Forecast Evaluation (on Holdout Test Set)")
                 col1, col2, col3 = st.columns(3)
@@ -304,7 +304,7 @@ if file_inputs:
                     st.metric("RMSE", f"${eval_metrics['rmse']:.2f}")
                 with col3:
                     st.metric("MAE", f"${eval_metrics['mae']:.2f}")
-                
+
                 # ============================================================
                 # ANOMALY DETECTION - CORRECT ARCHITECTURE (NO DATA LEAKAGE)
                 # ============================================================
@@ -315,14 +315,14 @@ if file_inputs:
                 train_with_pred['date'] = pd.to_datetime(train_with_pred['date'], utc=True).dt.tz_localize(None)
                 train_with_pred = train_with_pred.merge(train_predictions, on='date', how='inner')
                 train_with_pred['residual'] = train_with_pred['cost_usd'] - train_with_pred['predicted']
-                
+
                 # Step 2: Prepare features for anomaly detection on TRAINING residuals
                 train_anomaly_features = train_with_pred[['residual']].copy()
                 train_anomaly_features['residual_lag1'] = train_anomaly_features['residual'].shift(1)
                 train_anomaly_features['residual_rolling_mean_7'] = train_anomaly_features['residual'].rolling(7, min_periods=1).mean()
                 train_anomaly_features['residual_rolling_std_7'] = train_anomaly_features['residual'].rolling(7, min_periods=1).std()
                 train_anomaly_features = train_anomaly_features.bfill().ffill()
-                
+
                 # Validate minimum training residuals for anomaly detection
                 if len(train_anomaly_features) < MIN_DAILY_OBSERVATIONS_ANOMALY:
                     st.error(
@@ -330,11 +330,11 @@ if file_inputs:
                         f"At least {MIN_DAILY_OBSERVATIONS_ANOMALY} are required."
                     )
                     st.stop()
-                
+
                 # Step 3: Fit anomaly detector on TRAINING residuals (NOT test data)
                 anomaly_detector = create_anomaly_detector(contamination=contamination, n_estimators=n_estimators)
                 anomaly_detector.fit(train_anomaly_features)
-                
+
                 # Step 4: Generate predictions on TEST dates to get test residuals
                 test_predictions = forecast_model.predict_on_dates(test_data[['date']])
                 test_with_pred = test_data.copy()
@@ -342,22 +342,22 @@ if file_inputs:
                 test_with_pred['date'] = pd.to_datetime(test_with_pred['date'], utc=True).dt.tz_localize(None)
                 test_with_pred = test_with_pred.merge(test_predictions, on='date', how='inner')
                 test_with_pred['residual'] = test_with_pred['cost_usd'] - test_with_pred['predicted']
-                
+
                 # Step 5: Prepare features for anomaly detection on TEST residuals
                 test_anomaly_features = test_with_pred[['residual']].copy()
                 test_anomaly_features['residual_lag1'] = test_anomaly_features['residual'].shift(1)
                 test_anomaly_features['residual_rolling_mean_7'] = test_anomaly_features['residual'].rolling(7, min_periods=1).mean()
                 test_anomaly_features['residual_rolling_std_7'] = test_anomaly_features['residual'].rolling(7, min_periods=1).std()
                 test_anomaly_features = test_anomaly_features.bfill().ffill()
-                
+
                 # Step 6: Score anomaly detector on TEST features (using already-fitted detector)
                 anomaly_scores = anomaly_detector.score_samples(test_anomaly_features)
                 anomaly_predictions = anomaly_detector.predict(test_anomaly_features)
                 anomaly_labels = (anomaly_predictions == -1).astype(int)
-                
+
                 test_with_pred['anomaly_score'] = anomaly_scores
                 test_with_pred['is_anomaly'] = anomaly_labels
-                
+
                 # Log anomaly detection metrics
                 n_anomalies = int(anomaly_labels.sum())
                 tracker.log_metrics({
@@ -366,17 +366,17 @@ if file_inputs:
                     'contamination': contamination,
                     'n_estimators': n_estimators
                 })
-                
+
                 # Cost-Impact Ranking
                 st.subheader("Cost-Impact Anomaly Prioritization")
                 cost_scorer = CostImpactScorer()
                 # Prepare test data for cost-impact ranking
                 test_actual = test_with_pred['cost_usd'].values
                 test_predicted = test_with_pred['predicted'].values
-                
+
                 # Get anomaly scores from the detector (using test features)
                 anomaly_scores = anomaly_detector.score_samples(test_anomaly_features)
-                
+
                 # Rank anomalies by cost-impact
                 ranked_results = CostImpactScorer().rank_anomalies(
                     test_data=test_with_pred[['date', 'cost_usd']],
@@ -386,20 +386,20 @@ if file_inputs:
                     expected_costs=test_predicted,
                     mape=eval_metrics.get('mape')
                 )
-                
+
                 # Generate explanations for top anomalies
                 explainer = AnomalyExplainer()
                 explanations = explainer.explain_batch(
                     ranked_results,
                     top_k=10
                 )
-                
+
                 # Log cost-aware ranking metrics
                 tracker.log_metrics({
                     'n_anomalies_detected': n_anomalies,
                     'anomaly_rate': n_anomalies / len(anomaly_labels) if len(anomaly_labels) > 0 else 0.0
                 })
-                
+
                 # Create forecast visualization (historical + forecast)
                 forecast_fig = plot_forecast_with_intervals(
                     historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
@@ -407,17 +407,22 @@ if file_inputs:
                     title="Cloud Spend Forecast with Confidence Intervals"
                 )
                 st.plotly_chart(forecast_fig, width="stretch")
-                
+
                 # Show cost-impact ranked anomalies
                 st.subheader("Cost-Impact Anomaly Prioritization")
-                
+
+                # Filter to confirmed anomalies only (anomaly_label == 1).
+                # The table is titled "Anomaly Prioritization" so it must
+                # contain only confirmed anomalies, not high-cost normal days.
+                anomaly_results = ranked_results[ranked_results['anomaly_label'] == 1]
+
                 # Display top-K anomalies by cost-impact
                 top_k = 10
-                top_anomalies = ranked_results.nlargest(10, 'cost_impact_score')
-                
+                top_anomalies = anomaly_results.nlargest(top_k, 'cost_impact_score')
+
                 # Display anomaly table with cost-impact prioritization
                 if not top_anomalies.empty:
-                    display_cols = ['date', 'observed_cost', 'expected_cost', 'excess_cost', 
+                    display_cols = ['date', 'observed_cost', 'expected_cost', 'excess_cost',
                                    'relative_deviation', 'anomaly_score', 'cost_impact_score',
                                    'anomaly_label', 'cost_impact_rank']
                     display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'excess_cost',
@@ -431,31 +436,31 @@ if file_inputs:
                     display_df['anomaly_score'] = display_df['anomaly_score'].apply(lambda x: f"{x:.3f}")
                     display_df['cost_impact_score'] = display_df['cost_impact_score'].apply(lambda x: f"{x:.3f}")
                     display_df['anomaly_label'] = display_df['anomaly_label'].apply(lambda x: "⚠️ ANOMALY" if x == 1 else "Normal")
-                    
+
                     # Add severity badge
                     display_df['severity'] = display_df['anomaly_label'].apply(lambda x: "🔥 HIGH" if x == 1 else "✅ Normal")
-                    
+
                     st.dataframe(display_df, width="stretch")
-                    
+
                     # Show explanations for top anomalies
                     st.subheader("Anomaly Explanations")
                     explainer = AnomalyExplainer()
                     explanations = explainer.explain_batch(ranked_results, top_k=5)
-                    
+
                     for exp in explanations:
                         with st.expander(f"Rank #{exp['cost_impact_rank']} - {exp['date']} ({exp['provider']}) - ${exp['excess_cost']:,.2f} excess"):
                             st.write(exp['explanation'])
                             st.caption(f"Cost-Impact Score: {exp['cost_impact_score']:.3f} | Excess: ${exp['excess_cost']:,.2f}")
-                
+
                 else:
                     st.info("No anomalies detected in the holdout test period.")
-                
+
                 # Show forecast table
                 st.subheader("Future Forecast Values")
                 forecast_display = forecast_df[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']].copy()
                 forecast_display['date'] = forecast_display['date'].dt.date
                 st.dataframe(forecast_display)
-                
+
                 # Additional visualizations
                 st.subheader("Additional Insights")
                 col1, col2 = st.columns(2)
@@ -465,18 +470,18 @@ if file_inputs:
                 with col2:
                     monthly_fig = create_monthly_trend_chart(df, "Monthly Spend Trend")
                     st.plotly_chart(monthly_fig, width="stretch")
-                
+
                 # End MLflow run
                 tracker.end_run()
                 st.success(f"MLflow run completed: {run_id}")
-                    
+
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
                 st.exception(e)
 
 else:
     st.info("Please upload billing CSV files to begin analysis, or click 'Load Sample Data' in the sidebar to try with sample data.")
-    
+
     # Show sample data info
     st.subheader("Sample Data Format")
     st.write("The app expects AWS Cost & Usage Report (CUR) or GCP Billing Export CSV files.")

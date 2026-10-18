@@ -264,6 +264,43 @@ class TestForecasting:
         assert metrics['rmse'] >= 0
         assert metrics['mae'] >= 0
 
+    def test_evaluate_with_missing_prediction_dates(self):
+        """Evaluation raises ValueError when some test dates have no predictions."""
+        train_data = self.create_sample_data(30)
+        # Test data has dates NOT covered by forecast model's predictions
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=10, freq='D'),
+            'cost_usd': np.linspace(100, 150, 10)
+        })
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        # Mock predict_on_dates to return predictions for only 7 of 10 dates
+        original_predict = model.predict_on_dates
+        def mock_predict_on_dates(dates):
+            result = original_predict(dates)
+            return result.iloc[:7]  # Only return 7 predictions for 10 dates
+        model.predict_on_dates = mock_predict_on_dates
+
+        with pytest.raises(ValueError, match="missing predictions"):
+            model.evaluate(test_data)
+
+    def test_evaluate_with_duplicate_test_dates(self):
+        """Evaluation raises ValueError when test data has duplicate dates."""
+        train_data = self.create_sample_data(30)
+        # Test data with duplicate dates
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=5, freq='D').tolist() * 2,
+            'cost_usd': np.linspace(100, 150, 10)
+        })
+
+        model = create_forecasting_model('prophet')
+        model.fit(train_data)
+
+        with pytest.raises(ValueError, match="Duplicate dates"):
+            model.evaluate(test_data)
+
 
 class TestAnomalyDetection:
     """Tests for anomaly detection."""
@@ -320,6 +357,101 @@ class TestAnomalyDetection:
         assert anomaly_labels[25] == 1
         # Most others should be normal
         assert anomaly_labels.sum() <= 10  # With 10% contamination
+
+    def test_anomaly_table_contains_only_anomalies(self):
+        """Anomaly prioritization table contains only confirmed anomalies."""
+        from app.anomaly.cost_aware import CostImpactScorer
+
+        # Create test data with mixed anomaly labels
+        n = 20
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=n, freq='D'),
+            'cost_usd': np.linspace(100, 200, n)
+        })
+        anomaly_scores = np.random.uniform(-1.0, 1.0, n)
+        # Label first 5 as anomalies, rest as normal
+        anomaly_labels = np.array([1, 1, 1, 1, 1] + [0] * (n - 5))
+        actual_costs = test_data['cost_usd'].values
+        expected_costs = actual_costs * 0.95
+
+        scorer = CostImpactScorer()
+        ranked = scorer.rank_anomalies(
+            test_data=test_data,
+            anomaly_scores=anomaly_scores,
+            anomaly_labels=anomaly_labels,
+            actual_costs=actual_costs,
+            expected_costs=expected_costs,
+            mape=0.05
+        )
+
+        # Top-K by cost-impact score should only contain anomalies
+        top_k = 5
+        top_anomalies = ranked[ranked['anomaly_label'] == 1].nlargest(top_k, 'cost_impact_score')
+        assert len(top_anomalies) == top_k
+        assert (top_anomalies['anomaly_label'] == 1).all()
+
+    def test_normal_high_cost_not_in_anomaly_table(self):
+        """Normal rows with high cost-impact score do not appear in anomaly table."""
+        from app.anomaly.cost_aware import CostImpactScorer
+
+        # Create test data where a normal row has very high cost_impact_score
+        n = 10
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=n, freq='D'),
+            'cost_usd': np.linspace(100, 200, n)
+        })
+        anomaly_scores = np.random.uniform(-1.0, 1.0, n)
+        # Label first row as anomaly, rest as normal
+        anomaly_labels = np.array([1] + [0] * (n - 1))
+        actual_costs = test_data['cost_usd'].values
+        expected_costs = actual_costs * 0.95
+
+        scorer = CostImpactScorer()
+        ranked = scorer.rank_anomalies(
+            test_data=test_data,
+            anomaly_scores=anomaly_scores,
+            anomaly_labels=anomaly_labels,
+            actual_costs=actual_costs,
+            expected_costs=expected_costs,
+            mape=0.05
+        )
+
+        # Filter to anomalies only - should not contain any normal rows
+        anomaly_only = ranked[ranked['anomaly_label'] == 1]
+        assert (anomaly_only['anomaly_label'] == 1).all()
+        assert len(anomaly_only) == 1  # Only one anomaly in our test data
+
+    def test_explanations_only_for_anomalies(self):
+        """Explain_batch only explains confirmed anomalies."""
+        from app.anomaly.cost_aware import CostImpactScorer
+        from app.anomaly.explanations import AnomalyExplainer
+
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=10, freq='D'),
+            'cost_usd': np.linspace(100, 200, 10)
+        })
+        anomaly_scores = np.random.uniform(-1.0, 1.0, 10)
+        anomaly_labels = np.array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+        actual_costs = test_data['cost_usd'].values
+        expected_costs = actual_costs * 0.95
+
+        scorer = CostImpactScorer()
+        ranked = scorer.rank_anomalies(
+            test_data=test_data,
+            anomaly_scores=anomaly_scores,
+            anomaly_labels=anomaly_labels,
+            actual_costs=actual_costs,
+            expected_costs=expected_costs,
+            mape=0.05
+        )
+
+        explainer = AnomalyExplainer()
+        explanations = explainer.explain_batch(ranked, top_k=5)
+
+        # All explanations should be for anomalies only
+        assert len(explanations) == 2  # Only 2 anomalies
+        for exp in explanations:
+            assert exp['anomaly_label'] == 1
 
 
 class TestIntegration:
