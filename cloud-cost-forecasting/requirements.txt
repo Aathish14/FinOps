@@ -13,6 +13,7 @@ plotly>=5.20.0
 
 # Web framework
 streamlit>=1.35.0
+starlette<1.8.0
 
 # Experiment tracking
 mlflow>=2.12.0
