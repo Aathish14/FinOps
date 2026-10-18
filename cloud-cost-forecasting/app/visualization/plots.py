@@ -67,6 +67,10 @@ def plot_historical_spending(df: pd.DataFrame, title: str = "Historical Cloud Sp
     _validate_date_column(df, "Historical spending chart")
     _validate_cost_column(df, "Historical spending chart")
     
+    # Normalize date to timezone-naive for consistent plotting
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'], utc=True).dt.tz_localize(None)
+    
     # If we have multiple services/accounts, we can group by them
     if 'service_name' in df.columns and 'account_id' in df.columns:
         # Group by date and sum costs
@@ -315,7 +319,7 @@ def create_monthly_trend_chart(df: pd.DataFrame, title: str = "Monthly Spend Tre
     _validate_cost_column(df, "Monthly spend trend chart")
     
     df_copy = df.copy()
-    df_copy['date'] = pd.to_datetime(df_copy['date'])
+    df_copy['date'] = pd.to_datetime(df_copy['date'], utc=True).dt.tz_localize(None)
     
     # Create a month column (period) for grouping
     df_copy['month'] = df_copy['date'].dt.to_period('M')
