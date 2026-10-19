@@ -21,6 +21,14 @@ A production-ready, multi-cloud FinOps analytics platform for forecasting cloud 
 
 ---
 
+## Live Dashboard
+
+Explore the deployed application: [Launch FinOps Dashboard](https://finops-cloud-cost-forecast.streamlit.app/).
+
+![FinOps — Cloud Cost Forecasting & Spend Anomaly Detection Dashboard](docs/images/dashboard_finops.png)
+
+---
+
 ## Problem
 
 Cloud spending is growing unpredictably. Engineering teams lack visibility into:
