@@ -12,7 +12,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 |--------|--------|
 | Core Functionality | ✅ Complete |
 | Code Quality | ✅ Clean (compileall + pyflakes) |
-| Tests | ✅ 20/20 passing |
+| Tests | ✅ 56/56 passing |
 | Static Analysis | ✅ Clean (compileall + pyflakes) |
 | Runtime | ✅ Streamlit starts, MLflow works |
 | Regression | ✅ Zero production regression |
@@ -34,7 +34,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | Streamlit UI + Cost-Impact Ranking | ✅ | Runtime verified |
 | MLflow Tracking | ✅ | 10 runs logged |
 | MLflow Cloud Readiness | ⚠️ | Local only (doc'd) |
-| Tests | 20/20 PASS | pytest |
+| Tests | 56/56 PASS | pytest |
 | Static Analysis | compileall + pyflakes | Clean |
 | Streamlit Runtime | ✅ Starts on 8506 | Verified |
 | MLflow UI | ✅ Local (port 5000) | Verified |
@@ -50,7 +50,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | AWS PR-AUC (Cost-Aware) | 0.048 | **1.000** | +1975% |
 | GCP PR-AUC | 0.300 | 0.300 | Maintained |
 | Cost@3 Capture (AWS) | $108.65 | **$182.44** | **+68%** |
-| Cost@3 (GCP) | $108.65 | **$182.44** | +68% |
+| Cost@3 (GCP) | $108.65 | **$82.17** | — |
 | AWS True Anomalies in Top-3 | 0/3 | **3/3** | ✅ |
 | GCP True Anomalies in Top-4 | 0/10 | **3/10** | Partial |
 
@@ -74,7 +74,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | **MLflow Tracking** | Params, metrics, artifacts | ✅ |
 | **Streamlit UI** | Ranking table + explanations | ✅ |
 | **Experiment Framework** | Rolling-origin, baselines, ablation | ✅ |
-| **Tests** | 20/20 pass | ✅ |
+| **Tests** | 56/56 pass | ✅ |
 | **Static Analysis** | compileall + pyflakes clean | ✅ |
 
 ---
@@ -120,7 +120,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | `pip install -r cloud-cost-forecasting/requirements.txt` | ✅ |
 | `python -m compileall cloud-cost-forecasting/app/` | ✅ PASS |
 | `pyflakes cloud-cost-forecasting/app/` | ✅ CLEAN |
-| `pytest tests/ -v` | ✅ 20/20 PASS |
+| `pytest tests/ -v` | ✅ 56/56 PASS |
 | `streamlit run app.py` | ✅ Starts on 8506 |
 | `mlflow ui` | ✅ Starts on 5000 |
 | Streamlit UI workflow | ✅ Sample data → forecast → anomaly → ranking → explanation |
@@ -139,7 +139,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | No fabricated claims | ✅ | Honest about synthetic data |
 | Deployment readiness | ⚠️ | Local only; MLflow cloud needs managed server |
 | Real data validation | ⚠️ | Synthetic only; real data pending |
-| Real billing data | ⚠️ | Sample only (4 days/provider) |
+| Real billing data | ⚠️ | Sample only (90 days/provider) |
 
 ---
 
@@ -148,7 +148,7 @@ FinOps is now a polished, experimentally validated, commercially attractive FinO
 | Issue | Severity | Mitigation |
 |-------|----------|------------|
 | MLflow local-only for cloud | Low | Documented; requires managed server for cloud |
-| Sample data only 4 days | Medium | Documented; real data needed for production |
+| Sample data only 90 days | Medium | Documented; real data needed for production |
 | GCP anomaly recall low (10%) | Medium | Documented; needs real data |
 | No CI/CD pipeline | Low | GitHub Actions not configured |
 | No auth/SSO | Medium | Documented as internal-use assumption |

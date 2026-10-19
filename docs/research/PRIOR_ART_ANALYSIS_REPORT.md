@@ -278,7 +278,7 @@ This is the **only candidate** that:
 |----------|--------|
 | Is the project structurally sound? | **YES** - Clean architecture, tests pass, no regression |
 | Is the ML scientifically valid? | **YES** - Chronological splits, genuine metrics, no leakage |
-| Is the data adequate? | **NO** - Only 4-day synthetic samples; need 90+ days real data |
+| Is the data adequate? | **NO** - Only 90-day synthetic samples; need real billing data for production |
 | Are the metrics genuine? | **YES** - sklearn.metrics on holdout; no random values |
 | Is anomaly detection valid? | **PARTIALLY** - Correct methodology but synthetic data limits validity |
 | Is MLflow real? | **LOCALLY YES** - Logs params/metrics; cloud needs managed server |

@@ -107,7 +107,7 @@ Our experiments showed:
 ## Final Novelty Claim
 
 ### What We Claim as Novel
-> **An open-source, experimentally validated framework for cost-impact-aware cloud cost anomaly detection that ranks anomalies by estimated dollar impact, explains them via SHAP, estimates counterfactual cost impact, and classifies expected vs legitimate changes.**
+> **An open-source, experimentally validated framework for cost-impact-aware cloud cost anomaly detection that ranks anomalies by estimated dollar impact, explains them via deterministic templates, estimates counterfactual cost impact, and classifies expected vs legitimate changes.**
 
 ### What This Is NOT
 - ❌ "First multi-cloud anomaly detection" (commercial platforms)
@@ -118,7 +118,7 @@ Our experiments showed:
 
 ### What IS Novel
 1. **First open-source cost-impact-weighted anomaly scoring** for cloud costs
-2. **First SHAP explanations** adapted for cloud cost anomalies (service/account/usage features)
+2. **First deterministic template explanations** adapted for cloud cost anomalies (service/account/usage features)
 3. **First counterfactual cost-impact estimation** for cloud anomalies
 4. **First open benchmark** for cost-impact-aware anomaly detection
 4. **First integration of expected-change classification** with cost-impact ranking

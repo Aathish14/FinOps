@@ -31,7 +31,7 @@ A comprehensive feature matrix for buyers and evaluators.
 | | Cost-Impact Score | `norm_score + α × norm_excess × confidence × gate` | ✅ Validated | Custom |
 | | Priority Ranking | Top-K anomalies by cost-impact score | ✅ Implemented | pandas |
 | | Cost@K Metric | Cumulative excess cost captured in top-K | ✅ Validated | Custom |
-| | Severity Tiers | Critical / High / Medium / Low based on $ impact × confidence | ✅ Implemented | Custom |
+| | Severity Tiers | High / Normal based on anomaly label | ✅ Implemented | Custom |
 | **Explanations** | Deterministic Explanations | Template-based: observed vs expected, excess, rank, severity | ✅ Implemented | Custom |
 | | Cost-Impact Breakdown | Observed vs expected, excess $, % deviation, rank, score | ✅ Implemented | Custom |
 | | Persistence Tracking | Cumulative excess cost over anomaly duration | ✅ Implemented | Custom |
@@ -58,11 +58,11 @@ A comprehensive feature matrix for buyers and evaluators.
 | | Cost-Aware Baselines | Threshold, RawCost_IF, Residual_IF, CostAware_IF | ✅ Validated | Custom |
 | | Rolling-Origin Evaluation | 12 folds, 90-day init, 7-day horizon, 7-day step | ✅ Validated | Custom |
 | | Ablation Framework | A: score only, B: additive no gate, C: gated additive | ✅ Validated | Custom |
-| **Data** | Sample AWS Data | 4 days × 3 services (synthetic) | ✅ Included | CSV |
-| | Sample GCP Data | 4 days × 3 services (synthetic) | ✅ Included | CSV |
+| **Data** | Sample AWS Data | 90 days × 4 services (synthetic) | ✅ Included | CSV |
+| | Sample GCP Data | 90 days × 4 services (synthetic) | ✅ Included | CSV |
 | | Synthetic Benchmark | 180 days, 10 services, 7 anomaly events | ✅ Validated | CSV |
 | | Ground Truth Anomalies | 7 events, 38 anomaly days with metadata | ✅ Included | CSV |
-| **Testing** | Unit/Integration Tests | 20 tests (9 core + 11 explanation) | ✅ 20/20 passing | pytest |
+| **Testing** | Unit/Integration Tests | 56 tests (44 root + 12 app) | ✅ 56/56 passing | pytest |
 | | Lint | pyflakes clean | ✅ Clean | pyflakes |
 | | Compile Check | `python -m compileall` | ✅ Passes | compileall |
 | **MLflow** | Local SQLite | Zero-config local development | ✅ Working | MLflow 2.12+ |

@@ -242,7 +242,7 @@ This is a **systems/engineering contribution**, not an algorithmic novelty. It f
 - Raw-cost Isolation Forest baseline
 - Rolling-origin / walk-forward validation
 - Statistical significance testing
-- Multi-dataset evaluation (only synthetic + 4-day sample)
+- Multi-dataset evaluation (only synthetic + 90-day sample)
 
 **Recommendation**: Implement `experiments/` module with baseline comparison framework before claiming research validity.
 
@@ -304,7 +304,7 @@ This is a **systems/engineering contribution**, not an algorithmic novelty. It f
 |----------|--------|---------------|
 | 1. Is the project structurally sound? | **YES** | Single app structure, clean imports, no dead code |
 | 2. Is the ML scientifically valid? | **YES** | Chronological split, genuine metrics, no leakage, unsupervised correctly labeled |
-| 3. Is the data adequate? | **NO** | Only 4-day synthetic samples; insufficient for production |
+| 3. Is the data adequate? | **NO** | Only 90-day synthetic samples; insufficient for production |
 | 4. Are the metrics genuine? | **YES** | sklearn.metrics on holdout test set; no random values |
 | 5. Is anomaly detection valid? | **YES** | Runs on test residuals; unsupervised correctly documented |
 | 6. Is MLflow real? | **LOCALLY YES** | Logs params/metrics; local UI works; cloud needs managed server |

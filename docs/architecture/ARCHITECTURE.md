@@ -90,7 +90,7 @@ AWS CUR / GCP Billing Export
 **Anomaly Pipeline:**
 1. Compute residuals: `actual - predicted` on test period
 2. Feature engineering: `residual`, `lag1`, `rolling_mean_7`, `rolling_std_7`
-3. Isolation Forest fit on test residuals (contamination=0.05)
+3. Isolation Forest fit on training residuals (contamination=0.05)
 4. Cost-impact scoring: `norm_score + α × norm_excess × confidence × gate`
 5. Gate: only applies cost weighting when `norm_score > gate_threshold`
 6. Rank by `cost_impact_score`, generate explanations
@@ -223,11 +223,32 @@ Raw CSV (AWS CUR / GCP Billing)
 
 | File | Purpose |
 |------|---------|
-| `cloud-cost-forecasting/requirements.txt` | Pinned dependencies |
+| `cloud-cost-forecasting/requirements.txt` | Pinned dependencies (includes `starlette<1.8.0` for Streamlit ASGI response ordering compatibility) |
 | `cloud-cost-forecasting/.streamlit/config.toml` | Streamlit server config |
 | `.streamlit/config.toml` | Server config (headless, port, CORS) |
 | `.gitignore` | Excludes `__pycache__/`, `*.pyc`, `mlflow.db`, `test_env/`, `.env`, `*.log` |
 | `.streamlit/config.toml` | `headless=true`, `port=8501`, `enableCORS=true` |
+
+### Dual Requirements Setup
+
+Dependency pins exist in two locations with identical contents:
+- Root: `requirements.txt`
+- App: `cloud-cost-forecasting/requirements.txt`
+
+Install from `cloud-cost-forecasting/requirements.txt` (the CI workflow uses this path).
+
+### Sample Datasets
+
+Four sample CSV files are stored in `cloud-cost-forecasting/data/samples/` and discovered dynamically at runtime via `Path.glob("*.csv")`:
+
+| File | Provider | Rows | Days | Services |
+|------|----------|------|------|----------|
+| `sample_aws_billing.csv` | AWS | 360 | 90 | 4 (EC2, S3, RDS, Lambda) |
+| `sample_gcp_billing.csv` | GCP | 360 | 90 | 4 (Compute Engine, Cloud Storage, BigQuery, Cloud Functions) |
+| `sample_test_1000.csv` | Mixed | 1,000 | — | — |
+| `sample_test_2000.csv` | Mixed | 2,000 | — | — |
+
+All sample data is synthetic. Sample data is loaded through the Streamlit sidebar "Load Sample Data" dropdown or via file upload.
 
 ---
 
@@ -240,13 +261,18 @@ Raw CSV (AWS CUR / GCP Billing)
 | Persistence | Local filesystem | Ephemeral (use external DB) |
 | Auth | None (local) | Streamlit auth or custom |
 
+**Streamlit Cloud deployment notes:**
+- Entrypoint: `cloud-cost-forecasting/app.py`
+- Default branch is `master` (not `main`) — configure Streamlit Cloud accordingly
+- MLflow local SQLite does not persist across redeploys; use a managed tracking server for production
+
 ---
 
 ## Testing
 
 | Suite | Command | Coverage |
 |-------|---------|----------|
-| Unit/Integration | `pytest tests/ -v` | 20 tests (9 core + 11 explanations) |
+| Unit/Integration | `pytest tests/ -v` | 56 tests (44 root + 12 app) |
 | Lint | `pyflakes app/` | Clean |
 | Compile | `python -m compileall app/` | Clean |
 | Smoke | `streamlit run app.py --server.headless true` | Manual |

@@ -167,7 +167,7 @@ This document summarizes the experimental validation of the FinOps platform, inc
 | RawCost_IF PR-AUC | 0.792 | 0.283 |
 | Residual_IF PR-AUC | 0.417 | 0.258 |
 | Revised CostAware PR-AUC | **1.000** | 0.300 |
-| Cost@3 capture | $182.44 (39.4%) | $182.44 (39.4%) |
+| Cost@3 capture | $182.44 (39.4%) | $82.17 (14.3%) |
 
 **Observation:** GCP has 5× more anomalies but all methods struggle (low recall). AWS has few anomalies but high precision when detected.
 
@@ -210,7 +210,7 @@ This document summarizes the experimental validation of the FinOps platform, inc
 | Metric | Baseline (RawCost_IF) | Revised Cost-Aware | Improvement |
 |--------|----------------------|-------------------|-------------|
 | AWS Cost@3 | $108.65 | **$182.44** | **+68%** |
-| GCP Cost@3 | $108.65 | **$182.44** | +68% |
+| GCP Cost@3 | $108.65 | **$82.17** | — |
 | AWS PR-AUC | 0.792 | **1.000** | +26% |
 | GCP PR-AUC | 0.283 | 0.300 | +6% |
 | AWS Anomaly Recall@3 | 0% | **100%** | +100% |
@@ -223,7 +223,7 @@ This document summarizes the experimental validation of the FinOps platform, inc
 | Limitation | Impact |
 |------------|--------|
 | **Synthetic data only** | No real billing validation; patterns may not generalize |
-| **4-day sample data** | Insufficient for production forecasting |
+| **90-day sample data** | Sufficient for MVP forecasting; real billing validation pending |
 | **GCP low recall** | All methods miss 90% of GCP anomalies |
 | **Only 3 AWS anomalies** | Small sample; statistical significance limited |
 | **No real cost savings measured** | Synthetic excess cost ≠ real savings |

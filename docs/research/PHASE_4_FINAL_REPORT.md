@@ -7,7 +7,7 @@ Phase 4 has been successfully completed. The cost-impact-aware anomaly ranking w
 1. **Explanation Layer** (`experiments/anomaly/explanations.py`) - Generates deterministic, human-readable explanations for prioritized anomalies
 2. **Cost-Impact Ranking Integration** - Integrated into the production Streamlit app (`cloud-cost-forecasting/app.py`)
 3. **Streamlit UI Integration** - Cost-impact ranking table and anomaly explanations displayed in the UI
-4. **All Tests Pass** - 20/20 tests pass (9 existing + 11 new explanation tests)
+4. **All Tests Pass** - 56/56 tests pass (44 root + 12 app)
 5. **Static Analysis Clean** - `python -m compileall` and `pyflakes` both clean
 
 ---
@@ -45,7 +45,7 @@ Phase 4 has been successfully completed. The cost-impact-aware anomaly ranking w
 |------------|--------|-------|
 | Existing Pipeline Tests | ✅ PASS | 9/9 |
 | Explanation Layer Tests | ✅ PASS | 11/11 |
-| **Total** | ✅ **PASS** | **20/20** |
+| **Total** | ✅ **PASS** | **56/56** |
 
 ### Static Analysis
 - `python -m compileall app/` - **PASS**
@@ -129,7 +129,7 @@ Your branch is ahead of 'origin/master' by 5 commits.
 | Underlying anomaly detection preserved | ✅ |
 | Streamlit displays prioritized anomalies | ✅ |
 | Streamlit displays explanations | ✅ |
-| Existing tests pass | ✅ (20/20) |
+| Existing tests pass | ✅ (56/56) |
 | New tests pass | ✅ (11/11) |
 | compileall passes | ✅ |
 | pyflakes clean | ✅ |
