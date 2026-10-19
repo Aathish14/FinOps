@@ -34,6 +34,7 @@ streamlit*.err
 # Generated artifacts
 tree.d
 tree.md
+finops_tree.md
 current-tree.txt
 *.zip
 
