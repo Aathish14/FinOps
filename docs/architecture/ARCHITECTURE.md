@@ -121,26 +121,6 @@ AWS CUR / GCP Billing Export
 |--------|----------------|
 | `tracker.py` | `ExperimentTracker` — MLflow wrapper: `start_run()`, `log_params()`, `log_metrics()`, `log_artifact()`, `log_model()`, `log_figure()`, `log_table()` |
 
----
-
-### `experiments/`
-| Module | Purpose |
-|--------|---------|
-| `forecasting/baselines.py` | Naive, MA(7/14/30), Prophet; rolling-origin evaluation |
-| `anomaly/baselines.py` | Threshold, RawCost_IF, Residual_IF, evaluation |
-| `anomaly/cost_aware.py` | CostImpactScorer, gated additive, ranking, evaluation |
-| `anomaly/explanations.py` | AnomalyExplainer, batch explanations, UI formatting |
-| `run_experiments.py` | Full pipeline: forecasting → anomaly → cost-aware → MLflow |
-
----
-
-### `experiments/data/`
-| File | Description |
-|------|-------------|
-| `synthetic_benchmark.csv` | 180 days, 2 providers, 10 services, daily aggregated |
-| `synthetic_benchmark_detailed.csv` | Service-level detail (1800 rows) |
-| `ground_truth_anomalies.csv` | 7 controlled anomaly events with metadata |
-| `benchmark_metadata.json` | Generation parameters, seed, schema |
 
 ---
 
@@ -245,8 +225,6 @@ Four sample CSV files are stored in `cloud-cost-forecasting/data/samples/` and d
 |------|----------|------|------|----------|
 | `sample_aws_billing.csv` | AWS | 360 | 90 | 4 (EC2, S3, RDS, Lambda) |
 | `sample_gcp_billing.csv` | GCP | 360 | 90 | 4 (Compute Engine, Cloud Storage, BigQuery, Cloud Functions) |
-| `sample_test_1000.csv` | Mixed | 1,000 | — | — |
-| `sample_test_2000.csv` | Mixed | 2,000 | — | — |
 
 All sample data is synthetic. Sample data is loaded through the Streamlit sidebar "Load Sample Data" dropdown or via file upload.
 

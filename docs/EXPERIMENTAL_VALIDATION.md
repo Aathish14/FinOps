@@ -289,7 +289,7 @@ This document summarizes the experimental validation of the FinOps platform, inc
 | 11 | 160 | 7 | 29.47 | 34.34 | 0.0553 |
 | 12 | 167 | 7 | 17.55 | 19.58 | 0.0318 |
 
-*Full fold-level results available in `experiments/results/forecast_AWS_Prophet.csv`*
+*Full fold-level results available in the experiment result artifacts (preserved in the local external backup, not tracked on GitHub)*
 
 ---
 

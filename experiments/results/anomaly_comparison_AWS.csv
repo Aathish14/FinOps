@@ -1,5 +1,0 @@
-provider,method,precision,recall,f1,pr_auc,n_true_anomalies,n_predicted_anomalies,n_true_positives,n_false_positives,n_false_negatives
-AWS,Threshold,1.0,1.0,1.0,0.01835016835016835,2,2,2,0,0
-AWS,RawCost_IF,0.6666666666666666,1.0,0.8,0.7916666666666666,2,3,2,1,0
-AWS,Residual_IF,0.6666666666666666,1.0,0.8,0.41666666666666663,2,3,2,1,0
-AWS,CostAware_IF,0.6666666666666666,1.0,0.8,1.0,2,3,2,1,0

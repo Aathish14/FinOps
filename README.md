@@ -95,7 +95,6 @@ GCP Billing ─┘                          region, environment, usage_quantity,
 | `cloud-cost-forecasting/app/tracking/` | MLflow ExperimentTracker |
 | `cloud-cost-forecasting/app/visualization/` | Plotly charts (historical, forecast+CI, anomalies, service spend, monthly trend) |
 | `cloud-cost-forecasting/app.py` | Streamlit entrypoint wiring the full pipeline |
-| `experiments/` | Benchmark data, baselines, experiment runner, result artifacts |
 
 ### AWS/GCP ingestion and unified schema
 
@@ -186,7 +185,7 @@ No SHAP, no causal inference, no fabricated root causes — explanations report 
 
 ## Verified Experimental Results (Synthetic Benchmark)
 
-All results below come from the **180-day synthetic benchmark** (Jan 1 – Jun 28, 2024, seed=42), **not** real AWS/GCP billing data. `experiments/data/benchmark_metadata.json` explicitly states `data_type: SYNTHETIC_BENCHMARK`.
+All results below come from the **180-day synthetic benchmark** (Jan 1 – Jun 28, 2024, seed=42), **not** real AWS/GCP billing data. The benchmark metadata and experiment artifacts are preserved in the local external backup (not tracked on GitHub).
 
 ### Forecasting — rolling-origin, 12 folds × 2 providers
 
@@ -231,7 +230,7 @@ Cost-aware ranking resolves AWS degradation (0.792 → 1.000) while maintaining 
 | 5 | $86.05 | 15.0% | 3/3 (100%) |
 | 10 | $96.59 | 16.8% | 3/3 (100%) |
 
-> These Cost@K figures were independently recomputed from `experiments/results/anomaly_ranking_{AWS,GCP}.csv`. They differ from some copied figures in `docs/EXPERIMENTAL_VALIDATION.md` (which incorrectly duplicates AWS Cost@3 for GCP). The README uses the recomputed, verified values.
+> These Cost@K figures were independently recomputed from the experiment result artifacts (preserved in the local external backup, not tracked on GitHub). They differ from some copied figures in `docs/EXPERIMENTAL_VALIDATION.md` (which incorrectly duplicates AWS Cost@3 for GCP). The README uses the recomputed, verified values.
 
 ### Caveats
 
@@ -290,32 +289,10 @@ FinOps/
 │   │       ├── __init__.py, plots.py
 │   ├── data/samples/
 │   │   ├── sample_aws_billing.csv     # 90 days, synthetic
-│   │   ├── sample_gcp_billing.csv     # 90 days, synthetic
-│   │   ├── sample_test_1000.csv
-│   │   └── sample_test_2000.csv
+│   │   └── sample_gcp_billing.csv     # 90 days, synthetic
 │   └── tests/
 │       ├── __pycache__
 │       └── test_ingestor.py         # 12 tests
-├── experiments/
-│   ├── run_experiments.py         # full experiment runner
-│   ├── forecasting/baselines.py   # Naive, MA(7/14/30), Prophet, rolling-origin
-│   ├── anomaly/
-│   │   ├── baselines.py           # Threshold, RawCost_IF, Residual_IF
-│   │   ├── cost_aware.py          # CostImpactScorer, run_cost_aware_comparison
-│   │   └── explanations.py        # AnomalyExplainer
-│   ├── data/
-│   │   ├── synthetic_benchmark.csv
-│   │   ├── synthetic_benchmark_detailed.csv
-│   │   ├── ground_truth_anomalies.csv   # 7 events, 38 anomaly days
-│   │   ├── benchmark_metadata.json      # seed=42, SYNTHETIC_BENCHMARK
-│   │   └── generate_synthetic_benchmark.py
-│   ├── results/                   # CSV/JSON experiment outputs
-│   │   ├── forecast_*.csv
-│   │   ├── anomaly_comparison_*.csv
-│   │   ├── anomaly_ranking_*.csv
-│   │   ├── experiment_summary.json
-│   │   └── cost_aware_baseline.json
-│   └── plots/                     # (empty)
 ├── tests/
 │   ├── conftest.py
 │   ├── test_explanations.py       # 11 tests
@@ -497,7 +474,7 @@ No secrets are stored in code; `.env` is gitignored.
 | `docs/ML_METHODOLOGY.md` | Models, baselines, evaluation, formulation |
 | `docs/EXPERIMENTAL_VALIDATION.md` | 180-day benchmark, rolling-origin, ablation |
 | `docs/FEATURES.md` | Buyer-facing feature matrix |
-| `docs/research/` | 14 research reports (novelty decision, gap analysis, prior art, phase reports) |
+| `docs/research/` | 14 research reports (moved to local external backup; not tracked on GitHub) |
 | `cloud-cost-forecasting/app/` source | Authoritative implementation |
 
 ---

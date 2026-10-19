@@ -5,14 +5,14 @@ Tests for the anomaly explanation layer.
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'experiments'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'cloud-cost-forecasting'))
 
 import pytest
 import pandas as pd
 import numpy as np
 from datetime import datetime
 
-from anomaly.explanations import (
+from app.anomaly.explanations import (
     AnomalyExplainer,
     format_anomaly_for_ui,
     generate_explanations_for_ranking
