@@ -337,12 +337,16 @@ if file_inputs:
 
                 # Generate forecast for the future (beyond all historical data)
                 forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
-                # Rename columns for consistency with our visualization function
+                # prophet_model.py already renames columns dynamically based on
+                # interval_width (lower_bound_{ci} / upper_bound_{ci}). This
+                # rename is kept as a defensive fallback; it uses the same
+                # interval_width so it never hardcodes a specific suffix.
+                ci = round(interval_width * 100)
                 forecast_df = forecast_df.rename(columns={
                     'ds': 'date',
                     'yhat': 'forecast_cost_usd',
-                    'yhat_lower': 'lower_bound_80',
-                    'yhat_upper': 'upper_bound_80'
+                    'yhat_lower': f'lower_bound_{ci}',
+                    'yhat_upper': f'upper_bound_{ci}'
                 })
 
                 # Evaluate on test set (holdout period)

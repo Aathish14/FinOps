@@ -99,10 +99,16 @@ class TestPlotForecastWithIntervals:
         assert len(fig.data) == 4
 
     def test_plot_forecast_with_95_ci(self, sample_forecast_95, sample_historical_df):
-        """Chart should render with 95% CI columns."""
+        """Chart should render with 95% CI columns.
+
+        Regression test for production failure where the model emits
+        lower_bound_95/upper_bound_95 but validation expected _80 columns.
+        """
         fig = plot_forecast_with_intervals(sample_historical_df, sample_forecast_95)
         assert fig is not None
         assert len(fig.data) == 4
+        ci_trace = fig.data[3]
+        assert '95% Confidence Interval' in ci_trace.name
 
     def test_plot_forecast_multiple_ci_columns_raises(self, sample_historical_df):
         """Chart should raise ValueError when multiple CI column pairs exist."""
