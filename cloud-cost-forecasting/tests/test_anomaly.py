@@ -2,7 +2,7 @@
 Tests for anomaly detection and cost-impact ranking.
 
 Covers:
-  - Anomaly type classification (SPIKE vs DROP)
+  - Anomaly type classification (SPIKE vs DROP with emoji labels)
   - Cost deviation calculation for DROP anomalies
   - Cost impact label formatting
   - Explanation generation for DROP anomalies
@@ -75,14 +75,14 @@ class TestAnomalyTypeClassification:
             mape=0.05
         )
 
-        # All anomalies should be classified as SPIKE
-        assert (ranked['anomaly_type'] == 'SPIKE').all()
-        # All should have positive excess_cost
-        assert (ranked['excess_cost'] > 0).all()
-        # All should have zero cost_deviation
-        assert (ranked['cost_deviation'] == 0).all()
+        # All anomalies should be classified as SPIKE (with emoji)
+        assert (ranked['anomaly_type'] == '📈 SPIKE').all()
+        # All should have positive cost_deviation (magnitude)
+        assert (ranked['cost_deviation'] > 0).all()
         # Cost impact label should indicate excess spend
         assert all('Excess Spend' in label for label in ranked['cost_impact_label'])
+        # excess_cost should be formatted as +$X.XX Excess Spend
+        assert all(label.startswith('+$') for label in ranked['excess_cost'])
 
     def test_drop_anomaly_classification(self, drop_anomaly_data):
         """Observed < expected should be classified as DROP."""
@@ -102,15 +102,15 @@ class TestAnomalyTypeClassification:
             mape=0.05
         )
 
-        # All anomalies should be classified as DROP
-        assert (ranked['anomaly_type'] == 'DROP').all()
-        # All should have zero excess_cost
-        assert (ranked['excess_cost'] == 0).all()
-        # All should have positive cost_deviation
+        # All anomalies should be classified as DROP (with emoji)
+        assert (ranked['anomaly_type'] == '📉 DROP').all()
+        # All should have positive cost_deviation (magnitude)
         assert (ranked['cost_deviation'] > 0).all()
         # Cost impact label should indicate drop
         assert all('Drop' in label for label in ranked['cost_impact_label'])
         assert all('Possible Outage/Idle' in label for label in ranked['cost_impact_label'])
+        # excess_cost should be formatted as -$X.XX Drop
+        assert all(label.startswith('-$') for label in ranked['excess_cost'])
 
     def test_mixed_anomaly_classification(self, mixed_anomaly_data):
         """Mixed observed > expected and observed < expected should classify correctly."""
@@ -132,24 +132,23 @@ class TestAnomalyTypeClassification:
         )
 
         # Rows 0,2,4: observed > expected → SPIKE
-        assert (ranked['anomaly_type'].iloc[[0, 2, 4]] == 'SPIKE').all()
+        assert (ranked['anomaly_type'].iloc[[0, 2, 4]] == '📈 SPIKE').all()
         # Rows 1,3,5: observed < expected → DROP
-        assert (ranked['anomaly_type'].iloc[[1, 3, 5]] == 'DROP').all()
+        assert (ranked['anomaly_type'].iloc[[1, 3, 5]] == '📉 DROP').all()
 
-        # SPIKE rows should have positive excess_cost, zero cost_deviation
-        spike_rows = ranked[ranked['anomaly_type'] == 'SPIKE']
-        assert (spike_rows['excess_cost'] > 0).all()
-        assert (spike_rows['cost_deviation'] == 0).all()
+        # SPIKE rows should have positive cost_deviation
+        spike_rows = ranked[ranked['anomaly_type'] == '📈 SPIKE']
+        assert (spike_rows['cost_deviation'] > 0).all()
+        assert all(label.startswith('+$') for label in spike_rows['excess_cost'])
 
-        # DROP rows should have zero excess_cost, positive cost_deviation
-        drop_rows = ranked[ranked['anomaly_type'] == 'DROP']
-        assert (drop_rows['excess_cost'] == 0).all()
+        # DROP rows should have positive cost_deviation
+        drop_rows = ranked[ranked['anomaly_type'] == '📉 DROP']
         assert (drop_rows['cost_deviation'] > 0).all()
+        assert all(label.startswith('-$') for label in drop_rows['excess_cost'])
 
     def test_cost_impact_score_uses_type_appropriate_deviation(self):
-        """Cost-impact scoring should use excess_cost for SPIKE and cost_deviation for DROP."""
+        """Cost-impact scoring should use cost_deviation magnitude for both types."""
         # Create data where a DROP anomaly has large cost deviation
-        # but zero excess_cost
         test_data = pd.DataFrame({
             'date': pd.date_range(start='2024-02-10', periods=3, freq='D'),
             'cost_usd': [100.0, 500.0, 100.0],
@@ -172,12 +171,51 @@ class TestAnomalyTypeClassification:
             mape=0.05
         )
 
-        # DROP anomalies should still get cost-impact scoring boost
-        # (via cost_deviation instead of excess_cost)
-        drop_rows = ranked[ranked['anomaly_type'] == 'DROP']
+        # DROP anomalies should have positive cost_deviation
+        drop_rows = ranked[ranked['anomaly_type'] == '📉 DROP']
         assert len(drop_rows) == 2
         assert (drop_rows['cost_deviation'] > 0).all()
-        assert (drop_rows['excess_cost'] == 0).all()
+        assert all(label.startswith('-$') for label in drop_rows['excess_cost'])
+
+    def test_production_scenario_spike_and_drop(self):
+        """Production scenario: SPIKE row ($1108 vs $407) and DROP row ($399 vs $433)."""
+        test_data = pd.DataFrame({
+            'date': pd.date_range(start='2024-02-10', periods=2, freq='D'),
+            'cost_usd': [1108.0, 399.0],
+        })
+        anomaly_scores = np.array([-0.9, -0.8])
+        anomaly_labels = np.array([1, 1])
+        actual_costs = test_data['cost_usd'].values
+        # Row 0: observed=1108 > expected=407 → SPIKE, cost_deviation = 701
+        # Row 1: observed=399 < expected=433 → DROP, cost_deviation = 34
+        expected_costs = np.array([407.0, 433.0])
+
+        scorer = CostImpactScorer()
+        ranked = scorer.rank_anomalies(
+            test_data=test_data,
+            anomaly_scores=anomaly_scores,
+            anomaly_labels=anomaly_labels,
+            actual_costs=actual_costs,
+            expected_costs=expected_costs,
+            mape=0.05
+        )
+
+        spike_row = ranked[ranked['anomaly_type'] == '📈 SPIKE'].iloc[0]
+        drop_row = ranked[ranked['anomaly_type'] == '📉 DROP'].iloc[0]
+
+        # SPIKE: cost_deviation = 1108 - 407 = 701 > 700
+        assert spike_row['cost_deviation'] > 700
+        # SPIKE severity contains "Overspend"
+        assert 'Overspend' in spike_row['severity']
+
+        # DROP: cost_deviation = 433 - 399 = 34
+        assert drop_row['cost_deviation'] == 34.0
+        # DROP severity contains "Underspend"
+        assert 'Underspend' in drop_row['severity']
+
+        # Verify formatted labels
+        assert '+$701.00 Excess Spend' in spike_row['excess_cost']
+        assert '-$34.00 Drop (Possible Outage/Idle)' in drop_row['excess_cost']
 
 
 class TestAnomalyExplanations:
@@ -192,9 +230,9 @@ class TestAnomalyExplanations:
             'provider': 'AWS',
             'observed_cost': 300.0,
             'expected_cost': 500.0,
-            'excess_cost': 0.0,
+            'excess_cost': '-$200.00 Drop (Possible Outage/Idle)',
             'cost_deviation': 200.0,
-            'anomaly_type': 'DROP',
+            'anomaly_type': '📉 DROP',
             'relative_deviation': -0.4,
             'anomaly_score': -0.7,
             'anomaly_label': 1,
@@ -220,9 +258,9 @@ class TestAnomalyExplanations:
             'provider': 'AWS',
             'observed_cost': 300.0,
             'expected_cost': 500.0,
-            'excess_cost': 0.0,
+            'excess_cost': '-$200.00 Drop (Possible Outage/Idle)',
             'cost_deviation': 200.0,
-            'anomaly_type': 'DROP',
+            'anomaly_type': '📉 DROP',
             'relative_deviation': -0.4,
             'anomaly_score': -0.7,
             'anomaly_label': 1,
@@ -236,4 +274,58 @@ class TestAnomalyExplanations:
         # Financial summary should mention drop, not excess
         assert 'drop' in result['financial_summary'].lower()
         assert '$200.00' in result['financial_summary']
-        assert result['excess_cost'] == '$0.00'
+        assert result['excess_cost'] == '-$200.00 Drop (Possible Outage/Idle)'
+
+    def test_spike_anomaly_explanation(self):
+        """SPIKE anomaly explanation should mention excess spend amount."""
+        from app.anomaly.explanations import AnomalyExplainer
+
+        row = pd.Series({
+            'date': pd.Timestamp('2024-02-15'),
+            'provider': 'AWS',
+            'observed_cost': 650.0,
+            'expected_cost': 500.0,
+            'excess_cost': '+$150.00 Excess Spend',
+            'cost_deviation': 150.0,
+            'anomaly_type': '📈 SPIKE',
+            'relative_deviation': 0.3,
+            'anomaly_score': -0.85,
+            'anomaly_label': 1,
+            'cost_impact_score': 0.9,
+            'cost_impact_rank': 1,
+            'cumulative_excess_cost': 0.0,
+        })
+
+        explainer = AnomalyExplainer()
+        explanation = explainer.explain_anomaly(row)
+
+        # Should mention excess spend
+        assert 'exceeded expected' in explanation
+        assert '$150.00' in explanation
+
+    def test_format_explanation_for_ui_spike(self):
+        """format_explanation_for_ui should show excess financial summary for SPIKE anomalies."""
+        from app.anomaly.explanations import format_anomaly_for_ui
+
+        row = pd.Series({
+            'date': pd.Timestamp('2024-02-15'),
+            'provider': 'AWS',
+            'observed_cost': 650.0,
+            'expected_cost': 500.0,
+            'excess_cost': '+$150.00 Excess Spend',
+            'cost_deviation': 150.0,
+            'anomaly_type': '📈 SPIKE',
+            'relative_deviation': 0.3,
+            'anomaly_score': -0.85,
+            'anomaly_label': 1,
+            'cost_impact_score': 0.9,
+            'cost_impact_rank': 1,
+            'cumulative_excess_cost': 0.0,
+        })
+
+        result = format_anomaly_for_ui(row)
+
+        # Financial summary should mention excess
+        assert 'excess' in result['financial_summary'].lower()
+        assert '$150.00' in result['financial_summary']
+        assert result['excess_cost'] == '+$150.00 Excess Spend'

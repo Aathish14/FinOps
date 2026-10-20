@@ -63,18 +63,18 @@ class AnomalyExplainer:
             anomaly_type = anomaly_row.get('anomaly_type', None)
             rel_dev = anomaly_row.get('relative_deviation', 0)
             
-            if anomaly_type == 'SPIKE' and excess > 0:
+            if anomaly_type == '📈 SPIKE':
                 financial_part = (
                     f"Observed cost (${observed:,.2f}) exceeded expected cost (${expected:,.2f}) "
-                    f"by ${excess:,.2f} ({rel_dev:.1%})."
+                    f"by ${cost_deviation:,.2f} ({rel_dev:.1%})."
                 )
-            elif anomaly_type == 'DROP' and cost_deviation > 0:
+            elif anomaly_type == '📉 DROP':
                 financial_part = (
                     f"Observed cost (${observed:,.2f}) was below expected cost (${expected:,.2f}) "
                     f"by ${cost_deviation:,.2f} ({abs(rel_dev):.1%} below expected). "
                     f"Possible outage or idle resource."
                 )
-            elif excess > 0:
+            elif isinstance(excess, (int, float)) and excess > 0:
                 # Fallback for rows without anomaly_type column
                 financial_part = (
                     f"Observed cost (${observed:,.2f}) exceeded expected cost (${expected:,.2f}) "
@@ -103,7 +103,7 @@ class AnomalyExplainer:
         # Persistence
         if include_persistence:
             cum_excess = anomaly_row.get('cumulative_excess_cost', 0)
-            if cum_excess > 0:
+            if isinstance(cum_excess, (int, float)) and cum_excess > 0:
                 parts.append(
                     f"Cumulative excess cost over this anomaly period: ${cum_excess:,.2f}."
                 )
@@ -202,11 +202,11 @@ class AnomalyExplainer:
         # Build summary
         anomaly_type = anomaly_row.get('anomaly_type', None)
         cost_deviation = anomaly_row.get('cost_deviation', 0)
-        if anomaly_type == 'SPIKE' and excess > 0:
-            financial_summary = f"${excess:,.2f} excess ({rel_dev:.1%} above expected)"
-        elif anomaly_type == 'DROP' and cost_deviation > 0:
+        if anomaly_type == '📈 SPIKE':
+            financial_summary = f"${cost_deviation:,.2f} excess ({rel_dev:.1%} above expected)"
+        elif anomaly_type == '📉 DROP':
             financial_summary = f"${cost_deviation:,.2f} drop ({abs(rel_dev):.1%} below expected) — possible outage/idle"
-        elif excess > 0:
+        elif isinstance(excess, (int, float)) and excess > 0:
             # Fallback for rows without anomaly_type column
             financial_summary = f"${excess:,.2f} excess ({rel_dev:.1%} above expected)"
         else:
@@ -218,9 +218,9 @@ class AnomalyExplainer:
         narrative_parts = []
         anomaly_type = anomaly_row.get('anomaly_type', None)
         cost_deviation = anomaly_row.get('cost_deviation', 0)
-        if anomaly_type == 'SPIKE' and excess > 0:
-            narrative_parts.append(f"Cost exceeded expected by ${excess:,.2f} ({rel_dev:.1%})")
-        elif anomaly_type == 'DROP' and cost_deviation > 0:
+        if anomaly_type == '📈 SPIKE':
+            narrative_parts.append(f"Cost exceeded expected by ${cost_deviation:,.2f} ({rel_dev:.1%})")
+        elif anomaly_type == '📉 DROP':
             narrative_parts.append(f"Cost below expected by ${cost_deviation:,.2f} ({abs(rel_dev):.1%}) — possible outage/idle")
         if anomaly_row.get('anomaly_label', 0) == 1:
             narrative_parts.append(f"Anomaly score: {anomaly_row.get('anomaly_score', 'N/A'):.3f}")
@@ -229,13 +229,22 @@ class AnomalyExplainer:
         
         narrative = ". ".join(narrative_parts) + "."
         
+        # Format excess_cost for display: may already be a formatted string from rank_anomalies
+        excess = anomaly_row.get('excess_cost', 0)
+        if isinstance(excess, str):
+            excess_cost_display = excess  # Already formatted (e.g., "+$150.00 Excess Spend")
+        elif isinstance(excess, (int, float)) and excess > 0:
+            excess_cost_display = f"${excess:,.2f}"
+        else:
+            excess_cost_display = "$0.00"
+
         return {
             'date': date_str,
             'provider': provider,
             'severity': severity,
             'observed_cost': f"${observed:,.2f}",
             'expected_cost': f"${expected:,.2f}",
-            'excess_cost': f"${excess:,.2f}" if excess > 0 else "$0.00",
+            'excess_cost': excess_cost_display,
             'relative_deviation': f"{rel_dev:.1%}",
             'anomaly_score': f"{anomaly_score:.3f}" if anomaly_score is not None else "N/A",
             'cost_impact_score': f"{cost_impact_score:.3f}",

@@ -510,11 +510,13 @@ if file_inputs:
                 top_anomalies = anomaly_results.nlargest(top_k, 'cost_impact_score')
 
                 # Display anomaly table with cost-impact prioritization
+                # Columns excess_cost, cost_deviation, anomaly_type, severity are
+                # already computed and formatted by cost_aware.py.
                 if not top_anomalies.empty:
                     display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'excess_cost',
                                                 'cost_deviation', 'relative_deviation', 'anomaly_score',
                                                 'cost_impact_score', 'anomaly_label', 'cost_impact_rank',
-                                                'anomaly_type']].copy()
+                                                'anomaly_type', 'severity']].copy()
                     display_df['date'] = display_df['date'].dt.date
                     display_df['observed_cost'] = display_df['observed_cost'].apply(lambda x: f"${x:,.2f}")
                     display_df['expected_cost'] = display_df['expected_cost'].apply(lambda x: f"${x:,.2f}")
@@ -522,23 +524,6 @@ if file_inputs:
                     display_df['anomaly_score'] = display_df['anomaly_score'].apply(lambda x: f"{x:.3f}")
                     display_df['cost_impact_score'] = display_df['cost_impact_score'].apply(lambda x: f"{x:.3f}")
                     display_df['anomaly_label'] = display_df['anomaly_label'].apply(lambda x: "⚠️ ANOMALY" if x == 1 else "Normal")
-                    display_df['anomaly_type'] = display_df['anomaly_type'].apply(
-                        lambda x: "📈 SPIKE" if x == "SPIKE" else "📉 DROP"
-                    )
-
-                    # Format excess cost / cost deviation based on anomaly type
-                    display_df['excess_cost'] = display_df.apply(
-                        lambda row: f"+${row['excess_cost']:,.2f} Excess Spend"
-                        if row['anomaly_type'] == "SPIKE"
-                        else f"-${row['cost_deviation']:,.2f} Drop (Possible Outage/Idle)",
-                        axis=1
-                    )
-
-                    # Add severity badge based on anomaly type
-                    display_df['severity'] = display_df['anomaly_type'].apply(
-                        lambda x: "🔥 HIGH (Overspend)" if x == "SPIKE"
-                        else "🚨 HIGH (Underspend / Possible Outage)"
-                    )
 
                     st.dataframe(display_df, width="stretch")
 

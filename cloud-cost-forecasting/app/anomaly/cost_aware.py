@@ -208,36 +208,55 @@ class CostImpactScorer:
         Returns:
             DataFrame with anomaly rankings and cost-impact metrics
         """
-        # Compute excess costs (positive for SPIKE, 0 for DROP)
-        excess_costs = self.compute_excess_cost(
-            np.array(actual_costs), np.array(expected_costs)
-        )
-        
-        # Compute cost deviations (positive for DROP, 0 for SPIKE)
-        cost_deviations = np.maximum(
-            np.array(expected_costs) - np.array(actual_costs), 0
-        )
-        
-        # Classify anomaly type: SPIKE if observed > expected, else DROP
+        # Identify anomaly direction: True if observed > expected (SPIKE/overspend)
         observed = np.array(actual_costs)
         expected = np.array(expected_costs)
-        anomaly_types = np.where(observed > expected, 'SPIKE', 'DROP')
+        is_spike = observed > expected
         
-        # For cost-impact scoring, use the relevant deviation based on type
-        # SPIKE → excess_cost, DROP → cost_deviation
-        impact_costs = np.where(observed > expected, excess_costs, cost_deviations)
+        # Classify anomaly type with emoji labels
+        anomaly_types = np.where(is_spike, '📈 SPIKE', '📉 DROP')
         
-        # Build cost impact label
-        cost_impact_labels = []
+        # Compute cost deviation: positive dollar magnitude of anomaly for both types
+        # SPIKE: excess spent over baseline; DROP: underspent below baseline
+        cost_deviations = np.where(
+            is_spike,
+            observed - expected,        # SPIKE: positive magnitude
+            expected - observed         # DROP: positive magnitude
+        )
+        
+        # Compute raw numeric excess costs (max(observed - expected, 0))
+        # Needed for cumulative_excess_cost computation before string formatting
+        raw_excess_costs = np.maximum(observed - expected, 0)
+        
+        # Compute cumulative excess cost using RAW numeric values (before string formatting)
+        # Groups consecutive anomaly blocks and sums excess costs within each block
+        temp_df = pd.DataFrame({
+            'is_anomaly': anomaly_labels.astype(bool),
+            'raw_excess': raw_excess_costs
+        })
+        temp_df['cumulative_excess_cost'] = temp_df.groupby(
+            (temp_df['is_anomaly'] != temp_df['is_anomaly'].shift()).cumsum()
+        )['raw_excess'].transform('sum')
+        cumulative_excess_costs = temp_df['cumulative_excess_cost'].astype(float).values
+        
+        # Build excess_cost as formatted string based on anomaly type
+        excess_cost_labels = []
         for i in range(len(observed)):
-            if anomaly_types[i] == 'SPIKE':
-                cost_impact_labels.append(
-                    f"+${excess_costs[i]:,.2f} Excess Spend"
+            if is_spike[i]:
+                excess_cost_labels.append(
+                    f"+${cost_deviations[i]:,.2f} Excess Spend"
                 )
             else:
-                cost_impact_labels.append(
+                excess_cost_labels.append(
                     f"-${cost_deviations[i]:,.2f} Drop (Possible Outage/Idle)"
                 )
+        
+        # Build cost impact label (same content as excess_cost for display consistency)
+        cost_impact_labels = excess_cost_labels.copy()
+        
+        # For cost-impact scoring, use the cost_deviation magnitude for both types
+        # (This preserves the existing scoring math — impact_costs equals cost_deviation)
+        impact_costs = cost_deviations.copy()
         
         # Compute relative deviation
         relative_dev = self.compute_relative_deviation(
@@ -247,10 +266,26 @@ class CostImpactScorer:
         # Compute confidence weight
         confidence = self.compute_confidence_weight(mape)
         
-        # Compute cost-impact scores using type-appropriate deviation
+        # Compute cost-impact scores using type-appropriate deviation magnitude
         cost_impact_scores = self.compute_cost_impact_score(
             anomaly_scores, impact_costs, confidence
         )
+        
+        # Build severity labels based on anomaly type and magnitude
+        def assign_severity(row):
+            if row['anomaly_type'] == '📈 SPIKE':
+                return "🔥 HIGH (Overspend)" if row['cost_deviation'] > 100 else "🔥 MEDIUM (Overspend)"
+            else:
+                return "🚨 HIGH (Underspend / Possible Outage)" if row['cost_deviation'] > 50 else "⚠️ LOW (Underspend)"
+        
+        # Build severity column
+        severity_labels = []
+        for i in range(len(observed)):
+            if is_spike[i]:
+                sev = "🔥 HIGH (Overspend)" if cost_deviations[i] > 100 else "🔥 MEDIUM (Overspend)"
+            else:
+                sev = "🚨 HIGH (Underspend / Possible Outage)" if cost_deviations[i] > 50 else "⚠️ LOW (Underspend)"
+            severity_labels.append(sev)
         
         # Create results DataFrame
         results = pd.DataFrame({
@@ -258,7 +293,7 @@ class CostImpactScorer:
             'provider': test_data.get('provider', ['unknown'] * len(test_data)),
             'observed_cost': actual_costs,
             'expected_cost': expected_costs,
-            'excess_cost': excess_costs,
+            'excess_cost': excess_cost_labels,
             'cost_deviation': cost_deviations,
             'anomaly_type': anomaly_types,
             'cost_impact_label': cost_impact_labels,
@@ -266,6 +301,8 @@ class CostImpactScorer:
             'anomaly_score': anomaly_scores,
             'anomaly_label': anomaly_labels,
             'cost_impact_score': cost_impact_scores,
+            'severity': severity_labels,
+            'cumulative_excess_cost': cumulative_excess_costs,
             'is_anomaly': anomaly_labels.astype(bool)
         })
         
