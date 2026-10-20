@@ -208,10 +208,36 @@ class CostImpactScorer:
         Returns:
             DataFrame with anomaly rankings and cost-impact metrics
         """
-        # Compute excess costs
+        # Compute excess costs (positive for SPIKE, 0 for DROP)
         excess_costs = self.compute_excess_cost(
             np.array(actual_costs), np.array(expected_costs)
         )
+        
+        # Compute cost deviations (positive for DROP, 0 for SPIKE)
+        cost_deviations = np.maximum(
+            np.array(expected_costs) - np.array(actual_costs), 0
+        )
+        
+        # Classify anomaly type: SPIKE if observed > expected, else DROP
+        observed = np.array(actual_costs)
+        expected = np.array(expected_costs)
+        anomaly_types = np.where(observed > expected, 'SPIKE', 'DROP')
+        
+        # For cost-impact scoring, use the relevant deviation based on type
+        # SPIKE → excess_cost, DROP → cost_deviation
+        impact_costs = np.where(observed > expected, excess_costs, cost_deviations)
+        
+        # Build cost impact label
+        cost_impact_labels = []
+        for i in range(len(observed)):
+            if anomaly_types[i] == 'SPIKE':
+                cost_impact_labels.append(
+                    f"+${excess_costs[i]:,.2f} Excess Spend"
+                )
+            else:
+                cost_impact_labels.append(
+                    f"-${cost_deviations[i]:,.2f} Drop (Possible Outage/Idle)"
+                )
         
         # Compute relative deviation
         relative_dev = self.compute_relative_deviation(
@@ -221,9 +247,9 @@ class CostImpactScorer:
         # Compute confidence weight
         confidence = self.compute_confidence_weight(mape)
         
-        # Compute cost-impact scores
+        # Compute cost-impact scores using type-appropriate deviation
         cost_impact_scores = self.compute_cost_impact_score(
-            anomaly_scores, excess_costs, confidence
+            anomaly_scores, impact_costs, confidence
         )
         
         # Create results DataFrame
@@ -233,6 +259,9 @@ class CostImpactScorer:
             'observed_cost': actual_costs,
             'expected_cost': expected_costs,
             'excess_cost': excess_costs,
+            'cost_deviation': cost_deviations,
+            'anomaly_type': anomaly_types,
+            'cost_impact_label': cost_impact_labels,
             'relative_deviation': relative_dev,
             'anomaly_score': anomaly_scores,
             'anomaly_label': anomaly_labels,

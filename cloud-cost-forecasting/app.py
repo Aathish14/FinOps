@@ -335,8 +335,12 @@ if file_inputs:
                     'yearly_seasonality': str(yearly_seasonality)
                 })
 
-                # Generate forecast for the future (beyond all historical data)
-                forecast_df = forecast_model.predict(periods=forecast_horizon, freq='D')
+                # Generate forecast for enough periods to cover the holdout
+                # gap (training end → historical max) plus the true future
+                # horizon (historical max → historical max + forecast_horizon).
+                forecast_df = forecast_model.predict(
+                    periods=forecast_horizon + len(test_data), freq='D'
+                )
                 # prophet_model.py already renames columns dynamically based on
                 # interval_width (lower_bound_{ci} / upper_bound_{ci}). This
                 # rename is kept as a defensive fallback; it uses the same
@@ -348,6 +352,14 @@ if file_inputs:
                     'yhat_lower': f'lower_bound_{ci}',
                     'yhat_upper': f'upper_bound_{ci}'
                 })
+                # Keep only true future forecast dates (after the last
+                # historical date).  The holdout period (training end →
+                # historical max) is evaluated separately and should not
+                # appear in the "Future Forecast Values" table.
+                historical_max_date = daily_df['date'].max()
+                forecast_df = forecast_df[
+                    forecast_df['date'] > historical_max_date
+                ].copy().reset_index(drop=True)
 
                 # Evaluate on test set (holdout period)
                 eval_metrics = forecast_model.evaluate(test_data)
@@ -361,14 +373,25 @@ if file_inputs:
 
                 # Display evaluation metrics
                 st.subheader("Forecast Evaluation (on Holdout Test Set)")
+                holdout_start = test_data['date'].min()
+                holdout_end = test_data['date'].max()
+                holdout_pct = int(len(test_data) / len(daily_df) * 100)
+                st.info(
+                    f"Evaluated on {len(test_data)}-day holdout set "
+                    f"({holdout_start.date()} to {holdout_end.date()}) "
+                    f"representing {holdout_pct}% of dataset."
+                )
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     mape_str = f"{eval_metrics['mape']:.2%}" if eval_metrics['mape'] is not None else "N/A (zero actuals)"
-                    st.metric("MAPE", mape_str)
+                    st.metric("MAPE", mape_str,
+                              help="Mean Absolute Percentage Error — average absolute difference between predicted and actual, expressed as a percentage of actual.")
                 with col2:
-                    st.metric("RMSE", f"${eval_metrics['rmse']:.2f}")
+                    st.metric("RMSE", f"${eval_metrics['rmse']:.2f}",
+                              help="Root Mean Squared Error — square root of the average squared difference between predicted and actual. Penalizes large errors more heavily.")
                 with col3:
-                    st.metric("MAE", f"${eval_metrics['mae']:.2f}")
+                    st.metric("MAE", f"${eval_metrics['mae']:.2f}",
+                              help="Mean Absolute Error — average absolute difference between predicted and actual. Same units as cost.")
 
                 # ============================================================
                 # ANOMALY DETECTION - CORRECT ARCHITECTURE (NO DATA LEAKAGE)
@@ -465,10 +488,11 @@ if file_inputs:
                     'anomaly_rate': n_anomalies / len(anomaly_labels) if len(anomaly_labels) > 0 else 0.0
                 })
 
-                # Create forecast visualization (historical + forecast)
+                # Create forecast visualization (historical + holdout + future forecast)
                 forecast_fig = plot_forecast_with_intervals(
                     historical_df=daily_df.rename(columns={'ds': 'date', 'y': 'cost_usd'}),
                     forecast_df=forecast_df,
+                    holdout_df=test_data,
                     title="Cloud Spend Forecast with Confidence Intervals"
                 )
                 st.plotly_chart(forecast_fig, width="stretch")
@@ -487,23 +511,34 @@ if file_inputs:
 
                 # Display anomaly table with cost-impact prioritization
                 if not top_anomalies.empty:
-                    display_cols = ['date', 'observed_cost', 'expected_cost', 'excess_cost',
-                                   'relative_deviation', 'anomaly_score', 'cost_impact_score',
-                                   'anomaly_label', 'cost_impact_rank']
                     display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'excess_cost',
-                                                'relative_deviation', 'anomaly_score', 'cost_impact_score',
-                                                'anomaly_label', 'cost_impact_rank']].copy()
+                                                'cost_deviation', 'relative_deviation', 'anomaly_score',
+                                                'cost_impact_score', 'anomaly_label', 'cost_impact_rank',
+                                                'anomaly_type']].copy()
                     display_df['date'] = display_df['date'].dt.date
                     display_df['observed_cost'] = display_df['observed_cost'].apply(lambda x: f"${x:,.2f}")
                     display_df['expected_cost'] = display_df['expected_cost'].apply(lambda x: f"${x:,.2f}")
-                    display_df['excess_cost'] = display_df['excess_cost'].apply(lambda x: f"${x:,.2f}")
                     display_df['relative_deviation'] = display_df['relative_deviation'].apply(lambda x: f"{x:.1%}")
                     display_df['anomaly_score'] = display_df['anomaly_score'].apply(lambda x: f"{x:.3f}")
                     display_df['cost_impact_score'] = display_df['cost_impact_score'].apply(lambda x: f"{x:.3f}")
                     display_df['anomaly_label'] = display_df['anomaly_label'].apply(lambda x: "⚠️ ANOMALY" if x == 1 else "Normal")
+                    display_df['anomaly_type'] = display_df['anomaly_type'].apply(
+                        lambda x: "📈 SPIKE" if x == "SPIKE" else "📉 DROP"
+                    )
 
-                    # Add severity badge
-                    display_df['severity'] = display_df['anomaly_label'].apply(lambda x: "🔥 HIGH" if x == 1 else "✅ Normal")
+                    # Format excess cost / cost deviation based on anomaly type
+                    display_df['excess_cost'] = display_df.apply(
+                        lambda row: f"+${row['excess_cost']:,.2f} Excess Spend"
+                        if row['anomaly_type'] == "SPIKE"
+                        else f"-${row['cost_deviation']:,.2f} Drop (Possible Outage/Idle)",
+                        axis=1
+                    )
+
+                    # Add severity badge based on anomaly type
+                    display_df['severity'] = display_df['anomaly_type'].apply(
+                        lambda x: "🔥 HIGH (Overspend)" if x == "SPIKE"
+                        else "🚨 HIGH (Underspend / Possible Outage)"
+                    )
 
                     st.dataframe(display_df, width="stretch")
 

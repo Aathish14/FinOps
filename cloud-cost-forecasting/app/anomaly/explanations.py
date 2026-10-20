@@ -59,9 +59,23 @@ class AnomalyExplainer:
             observed = anomaly_row.get('observed_cost', 0)
             expected = anomaly_row.get('expected_cost', 0)
             excess = anomaly_row.get('excess_cost', 0)
+            cost_deviation = anomaly_row.get('cost_deviation', 0)
+            anomaly_type = anomaly_row.get('anomaly_type', None)
             rel_dev = anomaly_row.get('relative_deviation', 0)
             
-            if excess > 0:
+            if anomaly_type == 'SPIKE' and excess > 0:
+                financial_part = (
+                    f"Observed cost (${observed:,.2f}) exceeded expected cost (${expected:,.2f}) "
+                    f"by ${excess:,.2f} ({rel_dev:.1%})."
+                )
+            elif anomaly_type == 'DROP' and cost_deviation > 0:
+                financial_part = (
+                    f"Observed cost (${observed:,.2f}) was below expected cost (${expected:,.2f}) "
+                    f"by ${cost_deviation:,.2f} ({abs(rel_dev):.1%} below expected). "
+                    f"Possible outage or idle resource."
+                )
+            elif excess > 0:
+                # Fallback for rows without anomaly_type column
                 financial_part = (
                     f"Observed cost (${observed:,.2f}) exceeded expected cost (${expected:,.2f}) "
                     f"by ${excess:,.2f} ({rel_dev:.1%})."
@@ -186,7 +200,14 @@ class AnomalyExplainer:
         cum_excess = anomaly_row.get('cumulative_excess_cost', 0)
         
         # Build summary
-        if excess > 0:
+        anomaly_type = anomaly_row.get('anomaly_type', None)
+        cost_deviation = anomaly_row.get('cost_deviation', 0)
+        if anomaly_type == 'SPIKE' and excess > 0:
+            financial_summary = f"${excess:,.2f} excess ({rel_dev:.1%} above expected)"
+        elif anomaly_type == 'DROP' and cost_deviation > 0:
+            financial_summary = f"${cost_deviation:,.2f} drop ({abs(rel_dev):.1%} below expected) — possible outage/idle"
+        elif excess > 0:
+            # Fallback for rows without anomaly_type column
             financial_summary = f"${excess:,.2f} excess ({rel_dev:.1%} above expected)"
         else:
             financial_summary = "Within expected range"
@@ -195,8 +216,12 @@ class AnomalyExplainer:
         
         # Build narrative
         narrative_parts = []
-        if excess > 0:
+        anomaly_type = anomaly_row.get('anomaly_type', None)
+        cost_deviation = anomaly_row.get('cost_deviation', 0)
+        if anomaly_type == 'SPIKE' and excess > 0:
             narrative_parts.append(f"Cost exceeded expected by ${excess:,.2f} ({rel_dev:.1%})")
+        elif anomaly_type == 'DROP' and cost_deviation > 0:
+            narrative_parts.append(f"Cost below expected by ${cost_deviation:,.2f} ({abs(rel_dev):.1%}) — possible outage/idle")
         if anomaly_row.get('anomaly_label', 0) == 1:
             narrative_parts.append(f"Anomaly score: {anomaly_row.get('anomaly_score', 'N/A'):.3f}")
         if anomaly_row.get('cumulative_excess_cost', 0) > 0:

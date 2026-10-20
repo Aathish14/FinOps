@@ -100,6 +100,7 @@ def plot_historical_spending(df: pd.DataFrame, title: str = "Historical Cloud Sp
 def plot_forecast_with_intervals(
     historical_df: pd.DataFrame,
     forecast_df: pd.DataFrame,
+    holdout_df: pd.DataFrame = None,
     title: str = "Cloud Spend Forecast"
 ) -> go.Figure:
     """
@@ -107,7 +108,8 @@ def plot_forecast_with_intervals(
     
     Args:
         historical_df: DataFrame with historical data (date, cost_usd)
-        forecast_df: DataFrame with forecast data (date, forecast_cost_usd, lower_bound_80, upper_bound_80, etc.)
+        forecast_df: DataFrame with forecast data (date, forecast_cost_usd, lower_bound_*, upper_bound_*)
+        holdout_df: Optional DataFrame with holdout evaluation data (date, cost_usd)
         title: Chart title
     
     Returns:
@@ -159,9 +161,21 @@ def plot_forecast_with_intervals(
         x=forecast_df['date'],
         y=forecast_df['forecast_cost_usd'],
         mode='lines',
-        name='Forecast',
+        name='Future Forecast',
         line=dict(color='orange')
     ))
+    
+    # Holdout evaluation period (optional overlay)
+    if holdout_df is not None and not holdout_df.empty:
+        holdout_df = holdout_df.copy()
+        holdout_df['date'] = pd.to_datetime(holdout_df['date'], utc=True).dt.tz_localize(None)
+        fig.add_trace(go.Scatter(
+            x=holdout_df['date'],
+            y=holdout_df['cost_usd'],
+            mode='lines',
+            name='Holdout Actual',
+            line=dict(color='red', dash='dash')
+        ))
     
     # Confidence intervals
     fig.add_trace(go.Scatter(
