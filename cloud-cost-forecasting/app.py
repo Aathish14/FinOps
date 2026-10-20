@@ -533,9 +533,16 @@ if file_inputs:
                     explanations = explainer.explain_batch(ranked_results, top_k=5)
 
                     for exp in explanations:
-                        with st.expander(f"Rank #{exp['cost_impact_rank']} - {exp['date']} ({exp['provider']}) - ${exp['excess_cost']:,.2f} excess"):
+                        # Safely format excess_cost: may be pre-formatted string
+                        # (e.g. "+$701.93 Excess Spend") or a raw float.
+                        excess_val = exp.get('excess_cost', 0)
+                        if isinstance(excess_val, str):
+                            excess_display = excess_val
+                        else:
+                            excess_display = f"${excess_val:,.2f} excess"
+                        with st.expander(f"Rank #{exp['cost_impact_rank']} - {exp['date']} ({exp['provider']}) - {excess_display}"):
                             st.write(exp['explanation'])
-                            st.caption(f"Cost-Impact Score: {exp['cost_impact_score']:.3f} | Excess: ${exp['excess_cost']:,.2f}")
+                            st.caption(f"Cost-Impact Score: {exp['cost_impact_score']:.3f} | Excess: {excess_display}")
 
                 else:
                     st.info("No anomalies detected in the holdout test period.")

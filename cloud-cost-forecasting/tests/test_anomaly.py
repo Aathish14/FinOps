@@ -329,3 +329,78 @@ class TestAnomalyExplanations:
         assert 'excess' in result['financial_summary'].lower()
         assert '$150.00' in result['financial_summary']
         assert result['excess_cost'] == '+$150.00 Excess Spend'
+
+
+class TestAnomalyExpanderStringFormatting:
+    """Tests for safe excess_cost formatting in UI explainers.
+
+    Regression test for crash: ValueError: Unknown format code 'f' for object
+    of type 'str' when excess_cost is a pre-formatted string (e.g. "+$701.93 Excess Spend")
+    instead of a raw float.
+    """
+
+    def test_explanation_dict_string_excess_cost(self):
+        """explanation dict with string excess_cost should format safely in expander title."""
+        from app.anomaly.explanations import format_anomaly_for_ui
+
+        row = pd.Series({
+            'date': pd.Timestamp('2024-02-15'),
+            'provider': 'AWS',
+            'observed_cost': 1108.0,
+            'expected_cost': 407.0,
+            'excess_cost': '+$701.93 Excess Spend',  # pre-formatted string
+            'cost_deviation': 701.93,
+            'anomaly_type': '📈 SPIKE',
+            'relative_deviation': 1.72,
+            'anomaly_score': -0.85,
+            'anomaly_label': 1,
+            'cost_impact_score': 0.92,
+            'cost_impact_rank': 1,
+            'cumulative_excess_cost': 701.93,
+        })
+
+        # format_explanation_for_ui must not crash on string excess_cost
+        result = format_anomaly_for_ui(row)
+        assert result['excess_cost'] == '+$701.93 Excess Spend'
+
+        # Simulate the app.py expander title construction with type-safe formatting
+        excess_val = result.get('excess_cost', 0)
+        if isinstance(excess_val, str):
+            excess_display = excess_val
+        else:
+            excess_display = f"${excess_val:,.2f} excess"
+
+        assert excess_display == '+$701.93 Excess Spend'
+
+    def test_explanation_dict_float_excess_cost(self):
+        """explanation dict with float excess_cost should format safely in expander title."""
+        from app.anomaly.explanations import format_anomaly_for_ui
+
+        row = pd.Series({
+            'date': pd.Timestamp('2024-02-15'),
+            'provider': 'AWS',
+            'observed_cost': 650.0,
+            'expected_cost': 500.0,
+            'excess_cost': 150.0,  # raw float
+            'cost_deviation': 150.0,
+            'anomaly_type': '📈 SPIKE',
+            'relative_deviation': 0.3,
+            'anomaly_score': -0.85,
+            'anomaly_label': 1,
+            'cost_impact_score': 0.9,
+            'cost_impact_rank': 1,
+            'cumulative_excess_cost': 150.0,
+        })
+
+        result = format_anomaly_for_ui(row)
+        # Float excess_cost gets formatted as "$150.00" by format_anomaly_for_ui
+        assert result['excess_cost'] == '$150.00'
+
+        # Simulate the app.py expander title construction with type-safe formatting
+        excess_val = result.get('excess_cost', 0)
+        if isinstance(excess_val, str):
+            excess_display = excess_val
+        else:
+            excess_display = f"${excess_val:,.2f} excess"
+
+        assert excess_display == '$150.00'
