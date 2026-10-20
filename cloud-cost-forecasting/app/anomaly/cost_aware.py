@@ -224,11 +224,16 @@ class CostImpactScorer:
             expected - observed         # DROP: positive magnitude
         )
         
-        # Compute raw numeric excess costs (max(observed - expected, 0))
-        # Needed for cumulative_excess_cost computation before string formatting
-        raw_excess_costs = np.maximum(observed - expected, 0)
+        # Numeric excess_cost for calculations: max(observed - expected, 0)
+        # This is the numeric column used for calculations and metrics
+        numeric_excess_costs = np.maximum(observed - expected, 0)
         
-        # Compute cumulative excess cost using RAW numeric values (before string formatting)
+        # Compute cumulative excess cost using RAW numeric values
+        # Groups consecutive anomaly blocks and sums excess costs within each block
+        # raw_excess_costs uses the same logic as numeric_excess_costs for the temp_df
+        raw_excess_costs = numeric_excess_costs
+        
+        # Compute cumulative excess cost using RAW numeric values
         # Groups consecutive anomaly blocks and sums excess costs within each block
         temp_df = pd.DataFrame({
             'is_anomaly': anomaly_labels.astype(bool),
@@ -239,20 +244,17 @@ class CostImpactScorer:
         )['raw_excess'].transform('sum')
         cumulative_excess_costs = temp_df['cumulative_excess_cost'].astype(float).values
         
-        # Build excess_cost as formatted string based on anomaly type
-        excess_cost_labels = []
+        # Formatted string labels for UI display
+        cost_impact_labels = []
         for i in range(len(observed)):
             if is_spike[i]:
-                excess_cost_labels.append(
+                cost_impact_labels.append(
                     f"+${cost_deviations[i]:,.2f} Excess Spend"
                 )
             else:
-                excess_cost_labels.append(
+                cost_impact_labels.append(
                     f"-${cost_deviations[i]:,.2f} Drop (Possible Outage/Idle)"
                 )
-        
-        # Build cost impact label (same content as excess_cost for display consistency)
-        cost_impact_labels = excess_cost_labels.copy()
         
         # For cost-impact scoring, use the cost_deviation magnitude for both types
         # (This preserves the existing scoring math — impact_costs equals cost_deviation)
@@ -293,10 +295,10 @@ class CostImpactScorer:
             'provider': test_data.get('provider', ['unknown'] * len(test_data)),
             'observed_cost': actual_costs,
             'expected_cost': expected_costs,
-            'excess_cost': excess_cost_labels,
+            'excess_cost': numeric_excess_costs,  # Numeric for calculations
             'cost_deviation': cost_deviations,
             'anomaly_type': anomaly_types,
-            'cost_impact_label': cost_impact_labels,
+            'cost_impact_label': cost_impact_labels,  # Formatted string for UI
             'relative_deviation': relative_dev,
             'anomaly_score': anomaly_scores,
             'anomaly_label': anomaly_labels,
@@ -305,11 +307,6 @@ class CostImpactScorer:
             'cumulative_excess_cost': cumulative_excess_costs,
             'is_anomaly': anomaly_labels.astype(bool)
         })
-        
-        # Add cumulative excess cost for multi-period anomalies
-        results['cumulative_excess_cost'] = results.groupby(
-            (results['is_anomaly'] != results['is_anomaly'].shift()).cumsum()
-        )['excess_cost'].transform('sum')
         
         # Rank by cost-impact score (descending)
         results['cost_impact_rank'] = results['cost_impact_score'].rank(

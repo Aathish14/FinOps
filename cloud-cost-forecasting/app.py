@@ -510,16 +510,17 @@ if file_inputs:
                 top_anomalies = anomaly_results.nlargest(top_k, 'cost_impact_score')
 
                 # Display anomaly table with cost-impact prioritization
-                # Columns excess_cost, cost_deviation, anomaly_type, severity are
-                # already computed and formatted by cost_aware.py.
+                # excess_cost is numeric for calculations; cost_impact_label is formatted for UI
                 if not top_anomalies.empty:
-                    display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'excess_cost',
+                    display_df = top_anomalies[['date', 'observed_cost', 'expected_cost', 'cost_impact_label',
                                                 'cost_deviation', 'relative_deviation', 'anomaly_score',
                                                 'cost_impact_score', 'anomaly_label', 'cost_impact_rank',
                                                 'anomaly_type', 'severity']].copy()
                     display_df['date'] = display_df['date'].dt.date
                     display_df['observed_cost'] = display_df['observed_cost'].apply(lambda x: f"${x:,.2f}")
                     display_df['expected_cost'] = display_df['expected_cost'].apply(lambda x: f"${x:,.2f}")
+                    display_df['cost_impact_label'] = display_df['cost_impact_label'].apply(lambda x: str(x))
+                    display_df['cost_deviation'] = display_df['cost_deviation'].apply(lambda x: f"${x:,.2f}")
                     display_df['relative_deviation'] = display_df['relative_deviation'].apply(lambda x: f"{x:.1%}")
                     display_df['anomaly_score'] = display_df['anomaly_score'].apply(lambda x: f"{x:.3f}")
                     display_df['cost_impact_score'] = display_df['cost_impact_score'].apply(lambda x: f"{x:.3f}")
@@ -582,7 +583,7 @@ if file_inputs:
 
                 total_excess = 0.0
                 if ranked_results is not None and not ranked_results.empty:
-                    total_excess = float(ranked_results["excess_cost"].sum())
+                    total_excess = float(pd.to_numeric(ranked_results["excess_cost"], errors='coerce').fillna(0).sum())
 
                 st.session_state[ANALYSIS_RESULTS_KEY] = {
                     "source_file": source_file_name or "billing_data",
