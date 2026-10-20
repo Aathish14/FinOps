@@ -30,11 +30,17 @@ class ForecastingModel:
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 
+        # Store interval width for dynamic column naming in predictions
+        self.interval_width = kwargs.get('interval_width', 0.80)
         self.is_fitted = True
         return self
 
     def predict(self, periods: int, freq: str = 'D') -> pd.DataFrame:
-        """Generate forecasts."""
+        """Generate forecasts.
+
+        Returns only future predictions (not historical + future). The number
+        of returned rows equals ``periods``.
+        """
         if not self.is_fitted:
             raise ValueError("Model must be fitted before making predictions")
 
@@ -44,14 +50,17 @@ class ForecastingModel:
             future = self.model.make_future_dataframe(periods=periods, freq=freq)
             forecast = self.model.predict(future)
             # Rename columns to match our expected output
+            ci = int(self.interval_width * 100)
             forecast = forecast.rename(columns={
                 'ds': 'date',
                 'yhat': 'forecast_cost_usd',
-                'yhat_lower': 'lower_bound_80',
-                'yhat_upper': 'upper_bound_80'
+                'yhat_lower': f'lower_bound_{ci}',
+                'yhat_upper': f'upper_bound_{ci}'
             })
-            # Select and return the required columns
-            result = forecast[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']]
+            # Keep only future periods, not historical + future
+            result = forecast[['date', 'forecast_cost_usd',
+                              f'lower_bound_{ci}', f'upper_bound_{ci}']]
+            result = result.iloc[-periods:]
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 

@@ -518,7 +518,10 @@ if file_inputs:
 
                 # Show forecast table
                 st.subheader("Future Forecast Values")
-                forecast_display = forecast_df[['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']].copy()
+                # Dynamically resolve CI column names (set by prophet_model.py based on interval_width)
+                ci_cols = [c for c in forecast_df.columns if c.startswith(('lower_bound_', 'upper_bound_'))]
+                forecast_cols = ['date', 'forecast_cost_usd'] + ci_cols
+                forecast_display = forecast_df[forecast_cols].copy()
                 forecast_display['date'] = forecast_display['date'].dt.date
                 st.dataframe(forecast_display)
 

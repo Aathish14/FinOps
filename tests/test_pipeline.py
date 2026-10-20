@@ -85,7 +85,7 @@ class TestForecasting:
 
         forecast = model.predict(periods=14)
 
-        assert len(forecast) == 40 + 14  # historical + future
+        assert len(forecast) == 14  # future periods only
         assert 'forecast_cost_usd' in forecast.columns
         assert 'lower_bound_80' in forecast.columns
         assert 'upper_bound_80' in forecast.columns
@@ -144,7 +144,7 @@ class TestForecasting:
         assert model.model is not None
 
         forecast = model.predict(periods=7)
-        assert len(forecast) == 20 + 7
+        assert len(forecast) == 7  # future periods only
         assert 'forecast_cost_usd' in forecast.columns
 
     def test_fit_with_timezone_naive_dates(self):
@@ -163,7 +163,7 @@ class TestForecasting:
         assert model.model is not None
 
         forecast = model.predict(periods=7)
-        assert len(forecast) == 20 + 7
+        assert len(forecast) == 7  # future periods only
         assert 'forecast_cost_usd' in forecast.columns
 
     def test_fit_normalizes_ds_to_timezone_naive(self):
@@ -482,7 +482,7 @@ class TestIntegration:
         model.fit(train_data)
 
         forecast = model.predict(periods=14)
-        assert len(forecast) == len(train_data) + 14
+        assert len(forecast) == 14  # future periods only
 
         # Evaluation
         metrics = model.evaluate(test_data)
