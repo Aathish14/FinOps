@@ -21,12 +21,17 @@ from app.visualization.plots import (
 from app.tracking.tracker import get_tracker
 from app.anomaly.cost_aware import CostImpactScorer
 from app.anomaly.explanations import AnomalyExplainer, format_anomaly_for_ui
+from app.export.exporter import AnalysisExporter, _safe_filename, compute_input_hash
 from datetime import datetime
 
 # Minimum data requirements
 MIN_DAILY_OBSERVATIONS_FORECASTING = 30
 MIN_DAILY_OBSERVATIONS_ANOMALY = 10
 MAX_FORECAST_HORIZON_RATIO = 0.5  # Max forecast horizon as fraction of history
+
+# Session state keys for the Download Analysis feature
+ANALYSIS_RESULTS_KEY = "finops_analysis_results"
+ANALYSIS_INPUTS_HASH_KEY = "finops_analysis_inputs_hash"
 
 # Set page config
 st.set_page_config(
@@ -166,6 +171,45 @@ file_inputs = [
     f for f in file_inputs
     if hasattr(f, "getbuffer") or isinstance(f, (str, os.PathLike))
 ]
+
+# Compute a stable SHA-256 fingerprint of all analysis inputs so that
+# cached results are invalidated whenever the effective dataset or
+# hyperparameters change.  Actual file bytes are hashed (not just names
+# and sizes), so two files with identical names and sizes but different
+# contents are correctly detected as different inputs.
+_file_bytes: dict[str, bytes] = {}
+if uploaded_files:
+    for f in uploaded_files:
+        try:
+            file_bytes = bytes(f.getbuffer())
+        except Exception:
+            file_bytes = b""
+        _file_bytes[f.name] = file_bytes
+elif "sample_data_files" in st.session_state:
+    for path_str in st.session_state["sample_data_files"]:
+        try:
+            with open(path_str, "rb") as fh:
+                _file_bytes[path_str] = fh.read()
+        except Exception:
+            _file_bytes[path_str] = b""
+
+_current_config = {
+    "forecast_horizon": forecast_horizon,
+    "interval_width": interval_width,
+    "seasonality_mode": seasonality_mode,
+    "weekly_seasonality": str(weekly_seasonality),
+    "yearly_seasonality": str(yearly_seasonality),
+    "contamination": contamination,
+    "n_estimators": n_estimators,
+}
+
+_current_inputs_hash = compute_input_hash(_file_bytes, _current_config)
+
+# Invalidate cached analysis results when inputs change so that a
+# newly uploaded CSV or changed setting never exports stale results.
+if st.session_state.get(ANALYSIS_INPUTS_HASH_KEY) != _current_inputs_hash:
+    st.session_state.pop(ANALYSIS_RESULTS_KEY, None)
+    st.session_state[ANALYSIS_INPUTS_HASH_KEY] = _current_inputs_hash
 
 # Process uploaded files
 if file_inputs:
@@ -492,6 +536,42 @@ if file_inputs:
                 tracker.end_run()
                 st.success(f"MLflow run completed: {run_id}")
 
+                # Store analysis results in session state so they persist
+                # across Streamlit reruns for the download feature.
+                source_file_name = None
+                if uploaded_files:
+                    source_file_name = uploaded_files[0].name
+                elif st.session_state.get("sample_data_files"):
+                    first_path = st.session_state["sample_data_files"][0]
+                    if isinstance(first_path, str):
+                        source_file_name = first_path.split("/")[-1].split("\\")[-1]
+
+                total_excess = 0.0
+                if ranked_results is not None and not ranked_results.empty:
+                    total_excess = float(ranked_results["excess_cost"].sum())
+
+                st.session_state[ANALYSIS_RESULTS_KEY] = {
+                    "source_file": source_file_name or "billing_data",
+                    "generated_at": datetime.now(),
+                    "config": {
+                        "forecast_horizon": forecast_horizon,
+                        "interval_width": interval_width,
+                        "seasonality_mode": seasonality_mode,
+                        "weekly_seasonality": str(weekly_seasonality),
+                        "yearly_seasonality": str(yearly_seasonality),
+                        "contamination": contamination,
+                        "n_estimators": n_estimators,
+                    },
+                    "raw_data": df,
+                    "daily_data": daily_df,
+                    "forecast_data": forecast_df,
+                    "eval_metrics": eval_metrics,
+                    "ranked_results": ranked_results,
+                    "explanations": explanations,
+                    "anomaly_count": n_anomalies,
+                    "total_excess_cost": total_excess,
+                }
+
             except Exception as e:
                 st.error(f"Error during analysis: {str(e)}")
                 st.exception(e)
@@ -504,6 +584,61 @@ else:
     st.write("The app expects AWS Cost & Usage Report (CUR) or GCP Billing Export CSV files.")
     st.write("Sample AWS CUR columns: bill/BillingPeriodStartDate, lineItem/ProductCode, lineItem/UsageAccountId, lineItem/UsageAmount, lineItem/UnblendedCost, product/region")
     st.write("Sample GCP Billing Export columns: usage_start_time, service.description, project.id, cost, usage.amount, usage.unit")
+
+# ---- Download Analysis section ----
+results = st.session_state.get(ANALYSIS_RESULTS_KEY)
+if results:
+    st.subheader("Download Analysis")
+    st.markdown(
+        "Download the results of your most recent analysis. "
+        "Exports reflect the current dataset and do not rerun the analysis."
+    )
+
+    exporter = AnalysisExporter(results)
+    source_file = results.get("source_file", "billing_data")
+    base_name = _safe_filename(source_file)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        csv_bytes = exporter.to_csv()
+        st.download_button(
+            label="Download CSV",
+            data=csv_bytes,
+            file_name=f"{base_name}_analysis.csv",
+            mime="text/csv",
+            help="Download analysis results as CSV",
+        )
+
+    with col2:
+        xlsx_bytes = exporter.to_excel()
+        st.download_button(
+            label="Download Excel",
+            data=xlsx_bytes,
+            file_name=f"{base_name}_analysis.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            help="Download analysis results as Excel workbook",
+        )
+
+    with col3:
+        pdf_bytes = exporter.to_pdf()
+        st.download_button(
+            label="Download PDF",
+            data=pdf_bytes,
+            file_name=f"{base_name}_analysis.pdf",
+            mime="application/pdf",
+            help="Download analysis results as PDF report",
+        )
+
+    with col4:
+        json_str = exporter.to_json()
+        st.download_button(
+            label="Download JSON",
+            data=json_str.encode("utf-8"),
+            file_name=f"{base_name}_analysis.json",
+            mime="application/json",
+            help="Download analysis results as JSON",
+        )
 
 # Footer
 st.markdown("---")
