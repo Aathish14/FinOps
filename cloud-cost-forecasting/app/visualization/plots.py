@@ -119,13 +119,22 @@ def plot_forecast_with_intervals(
     _validate_dataframe(historical_df, ['date', 'cost_usd'], "Forecast chart (historical data)")
     _validate_date_column(historical_df, "Forecast chart (historical data)")
     _validate_cost_column(historical_df, "Forecast chart (historical data)")
-    
-    required_forecast_cols = ['date', 'forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']
+    # Dynamically discover CI column names from forecast data
+    ci_lower_cols = [c for c in forecast_df.columns if c.startswith('lower_bound_')]
+    ci_upper_cols = [c for c in forecast_df.columns if c.startswith('upper_bound_')]
+    if len(ci_lower_cols) != 1 or len(ci_upper_cols) != 1:
+        raise ValueError(
+            f"Forecast chart requires exactly one lower_bound_* and one upper_bound_* column. "
+            f"Found lower columns: {ci_lower_cols}, upper columns: {ci_upper_cols}"
+        )
+    ci_lower_col = ci_lower_cols[0]
+    ci_upper_col = ci_upper_cols[0]
+    required_forecast_cols = ['date', 'forecast_cost_usd', ci_lower_col, ci_upper_col]
     _validate_dataframe(forecast_df, required_forecast_cols, "Forecast chart (forecast data)")
     _validate_date_column(forecast_df, "Forecast chart (forecast data)")
     
     # Check forecast cost columns are numeric
-    for col in ['forecast_cost_usd', 'lower_bound_80', 'upper_bound_80']:
+    for col in ['forecast_cost_usd', ci_lower_col, ci_upper_col]:
         if not pd.api.types.is_numeric_dtype(forecast_df[col]):
             raise ValueError(f"Forecast chart: '{col}' must be numeric. Got dtype: {forecast_df[col].dtype}")
     
@@ -157,7 +166,7 @@ def plot_forecast_with_intervals(
     # Confidence intervals
     fig.add_trace(go.Scatter(
         x=forecast_df['date'],
-        y=forecast_df['upper_bound_80'],
+        y=forecast_df[ci_upper_col],
         fill=None,
         mode='lines',
         line_color='rgba(0,100,80,0)',
@@ -165,11 +174,11 @@ def plot_forecast_with_intervals(
     ))
     fig.add_trace(go.Scatter(
         x=forecast_df['date'],
-        y=forecast_df['lower_bound_80'],
+        y=forecast_df[ci_lower_col],
         fill='tonexty',
         mode='lines',
         line_color='rgba(0,100,80,0)',
-        name='80% Confidence Interval',
+        name=f'{ci_lower_col.split("_")[-1]}% Confidence Interval',
         fillcolor='rgba(255,165,0,0.2)'
     ))
     
